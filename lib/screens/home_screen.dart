@@ -1,0 +1,680 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/app_colors.dart';
+import '../services/api_service.dart';
+import 'buat_laporan_screen.dart';
+import 'laporan_screen.dart';
+import 'notifikasi_screen.dart';
+import 'profile_screen.dart';
+
+// ── Model Laporan sederhana ───────────────────────────────────────────────────
+class LaporanModel {
+  final int id;
+  final String judul;
+  final String status;
+  final String namaKategori;
+  final String waktu;
+
+  const LaporanModel({
+    required this.id,
+    required this.judul,
+    required this.status,
+    required this.namaKategori,
+    required this.waktu,
+  });
+
+  factory LaporanModel.fromJson(Map<String, dynamic> json) {
+    // Ambil nama kategori
+    String kategori = 'Lainnya';
+    if (json['kategori'] != null && json['kategori']['nama'] != null) {
+      kategori = json['kategori']['nama'];
+    }
+
+    // Format waktu
+    String waktu = '-';
+    if (json['created_at'] != null) {
+      try {
+        final dt = DateTime.parse(json['created_at']).toLocal();
+        final now = DateTime.now();
+        final diff = now.difference(dt);
+        if (diff.inMinutes < 60) {
+          waktu = '${diff.inMinutes} menit yang lalu';
+        } else if (diff.inHours < 24) {
+          waktu = '${diff.inHours} jam yang lalu';
+        } else if (diff.inDays == 1) {
+          waktu = 'Kemarin';
+        } else {
+          waktu = '${diff.inDays} hari yang lalu';
+        }
+      } catch (_) {
+        waktu = json['created_at'].toString();
+      }
+    }
+
+    return LaporanModel(
+      id: json['id'] ?? 0,
+      judul: json['judul'] ?? '-',
+      status: json['status'] ?? 'menunggu',
+      namaKategori: kategori,
+      waktu: waktu,
+    );
+  }
+}
+
+// ── Home Screen ───────────────────────────────────────────────────────────────
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  int _selectedNav = 0;
+
+  late AnimationController _animController;
+  late Animation<double> _fadeAnim;
+  late Animation<Offset> _slideAnim;
+
+  bool _isLoading = true;
+  String _namaUser = 'Loading...';
+  String _nimUser = '-';
+  String _prodiUser = '-';
+  int _total = 0;
+  int _menunggu = 0;
+  int _selesai = 0;
+  List<LaporanModel> _laporanList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
+    _fadeAnim =
+        CurvedAnimation(parent: _animController, curve: Curves.easeIn);
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.07),
+      end: Offset.zero,
+    ).animate(
+        CurvedAnimation(parent: _animController, curve: Curves.easeOut));
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    try {
+      // 1. Ambil data user dari SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final userRaw = prefs.getString('user');
+      if (userRaw != null) {
+        final userObj = jsonDecode(userRaw);
+        setState(() {
+          _namaUser = userObj['nama'] ?? 'User';
+          _nimUser = userObj['nim'] ?? '-';
+          _prodiUser = userObj['prodi'] ?? '-';
+        });
+      }
+
+      // 2. Ambil data terbaru dari API (me endpoint)
+      final meResult = await ApiService.getMe();
+      if (meResult['success'] == true && meResult['user'] != null) {
+        final user = meResult['user'];
+        // Simpan data terbaru ke SharedPreferences
+        prefs.setString('user', jsonEncode(user));
+        setState(() {
+          _namaUser = user['nama'] ?? _namaUser;
+          _nimUser = user['nim'] ?? _nimUser;
+          _prodiUser = user['prodi'] ?? _prodiUser;
+        });
+      }
+
+      // 3. Ambil data laporan & statistik
+      final response = await ApiService.getLaporan();
+      if (response['success'] == true) {
+        final stats = response['stats'];
+        final List<dynamic> listRaw = response['laporan'] ?? [];
+
+        setState(() {
+          _total = stats['total'] ?? 0;
+          _menunggu = stats['menunggu'] ?? 0;
+          _selesai = stats['selesai'] ?? 0;
+          _laporanList = listRaw
+              .whereType<Map<String, dynamic>>()
+              .map((item) => LaporanModel.fromJson(item))
+              .toList();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memuat data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _animController.forward(from: 0.0);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF2F4F3),
+      body: IndexedStack(
+        index: _selectedNav,
+        children: [
+          _buildMainDashboardContent(),
+          const LaporanScreen(),
+          const NotifikasiScreen(),
+          const ProfileScreen(),
+        ],
+      ),
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildMainDashboardContent() {
+    return RefreshIndicator(
+      onRefresh: _loadDashboardData,
+      color: const Color(0xFF1A5E35),
+      child: Column(
+        children: [
+          _buildAppBar(),
+          Expanded(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0xFF1A5E35)),
+                    ),
+                  )
+                : FadeTransition(
+                    opacity: _fadeAnim,
+                    child: SlideTransition(
+                      position: _slideAnim,
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding:
+                            const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildWelcomeCard(),
+                            const SizedBox(height: 14),
+                            _buildStatsRow(),
+                            const SizedBox(height: 14),
+                            _buildBuatLaporanButton(),
+                            const SizedBox(height: 22),
+                            _buildLaporanTerbaru(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppBar() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0D4A28), Color(0xFF1A6B3A)],
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.menu, color: Colors.white, size: 26),
+                onPressed: () {},
+              ),
+              const Expanded(
+                child: Text(
+                  'SILAPOR UIN',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 0.5),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout_rounded,
+                    color: Colors.white, size: 22),
+                onPressed: () async {
+                  await ApiService.logout();
+                  if (mounted) Navigator.of(context).pop();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWelcomeCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1A5E35), Color(0xFF2E8B57)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+              color: const Color(0xFF1A5E35).withOpacity(0.35),
+              blurRadius: 16,
+              offset: const Offset(0, 5)),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -10,
+            top: -10,
+            child: Opacity(
+              opacity: 0.12,
+              child: const Icon(Icons.school_rounded,
+                  size: 110, color: Colors.white),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(20)),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Login berhasil',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500)),
+                    SizedBox(width: 4),
+                    Icon(Icons.check, color: Colors.white, size: 13),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text('Halo, $_namaUser! 👋',
+                  style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      height: 1.2)),
+              const SizedBox(height: 6),
+              Text(
+                'NIM: $_nimUser  •  $_prodiUser',
+                style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white.withOpacity(0.8)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsRow() {
+    return Row(
+      children: [
+        _buildStatCard(
+            label: 'Total',
+            value: '$_total',
+            color: const Color(0xFF111111)),
+        const SizedBox(width: 10),
+        _buildStatCard(
+            label: 'Menunggu',
+            value: '$_menunggu',
+            color: const Color(0xFFE07B00)),
+        const SizedBox(width: 10),
+        _buildStatCard(
+            label: 'Selesai',
+            value: '$_selesai',
+            color: const Color(0xFF1A6B3A)),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(
+      {required String label,
+      required String value,
+      required Color color}) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Column(
+          children: [
+            Text(label,
+                style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.black.withOpacity(0.45),
+                    fontWeight: FontWeight.w500)),
+            const SizedBox(height: 6),
+            Text(value,
+                style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBuatLaporanButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: ElevatedButton(
+        onPressed: () async {
+          final bool? isUploaded = await Navigator.of(context).push(
+            MaterialPageRoute(
+                builder: (context) => const BuatLaporanScreen()),
+          );
+          if (isUploaded == true) _loadDashboardData();
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF1A5E35),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14)),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add, size: 20),
+            SizedBox(width: 6),
+            Text('+ Buat Laporan Baru',
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLaporanTerbaru() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('Laporan Terbaru',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF111111))),
+            const Spacer(),
+            GestureDetector(
+              onTap: () => setState(() => _selectedNav = 1),
+              child: const Text('Lihat Semua',
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.darkGreen2,
+                      fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _laporanList.isEmpty
+            ? Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: const Color(0xFFE2E8F0), width: 1.2),
+                ),
+                child: const Center(
+                  child: Text('Belum ada laporan',
+                      style: TextStyle(
+                          color: Colors.black45, fontSize: 14)),
+                ),
+              )
+            : Column(
+                children: _laporanList.take(3).map((item) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildLaporanTile(item),
+                  );
+                }).toList(),
+              ),
+      ],
+    );
+  }
+
+  Widget _buildLaporanTile(LaporanModel item) {
+    Color statusColor;
+    Color statusBg;
+    final s = item.status.toLowerCase();
+
+    if (s == 'menunggu') {
+      statusColor = const Color(0xFFE07B00);
+      statusBg = const Color(0xFFFFF3E0);
+    } else if (s == 'selesai') {
+      statusColor = const Color(0xFF1A6B3A);
+      statusBg = const Color(0xFFE8F5EE);
+    } else if (s == 'ditolak') {
+      statusColor = const Color(0xFFDC2626);
+      statusBg = const Color(0xFFFEF2F2);
+    } else {
+      statusColor = const Color(0xFF1565C0);
+      statusBg = const Color(0xFFE3F2FD);
+    }
+
+    final statusLabel = s == 'menunggu'
+        ? 'Menunggu'
+        : s == 'selesai'
+            ? 'Selesai'
+            : s == 'ditolak'
+                ? 'Ditolak'
+                : 'Diproses';
+
+    return GestureDetector(
+      onTap: () => setState(() => _selectedNav = 1),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border:
+              Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Text(
+                    item.namaKategori.toUpperCase(),
+                    style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF64748B),
+                        letterSpacing: 0.4),
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                      color: statusBg,
+                      borderRadius: BorderRadius.circular(20)),
+                  child: Text(statusLabel,
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: statusColor)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(item.judul,
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E293B))),
+            const SizedBox(height: 12),
+            const Divider(
+                height: 1,
+                thickness: 0.8,
+                color: Color(0xFFE2E8F0)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(
+                    s == 'selesai'
+                        ? Icons.calendar_today_outlined
+                        : Icons.access_time_rounded,
+                    size: 14,
+                    color: const Color(0xFF64748B)),
+                const SizedBox(width: 6),
+                Text(item.waktu,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF64748B))),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    final items = [
+      _NavItem(icon: Icons.home_rounded, label: 'Beranda'),
+      _NavItem(icon: Icons.description_outlined, label: 'Laporan'),
+      _NavItem(icon: Icons.notifications_outlined, label: 'Notifikasi'),
+      _NavItem(icon: Icons.person_outline_rounded, label: 'Profil'),
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, -3)),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: List.generate(items.length, (i) {
+              final isActive = i == _selectedNav;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _selectedNav = i),
+                  behavior: HitTestBehavior.opaque,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? const Color(0xFFE8F5EE)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Icon(items[i].icon,
+                            size: 24,
+                            color: isActive
+                                ? AppColors.darkGreen2
+                                : const Color(0xFF999999)),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        items[i].label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: isActive
+                              ? FontWeight.w700
+                              : FontWeight.w400,
+                          color: isActive
+                              ? AppColors.darkGreen2
+                              : const Color(0xFF999999),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem {
+  final IconData icon;
+  final String label;
+  const _NavItem({required this.icon, required this.label});
+}
