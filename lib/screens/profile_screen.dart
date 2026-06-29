@@ -51,14 +51,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+//ini kode yang pertama
+  // void _setUserData(Map<String, dynamic> u) {
+  //   setState(() {
+  //     _nama = u['nama'] ?? '-';
+  //     _nim = u['nim'] ?? '-';
+  //     _email = u['email'] ?? '-';
+  //     _fakultas = u['fakultas'] ?? '-';
+  //     _prodi = u['prodi'] ?? '-';
+  //     _role = u['role'] ?? 'mahasiswa';
+  //     _fotoProfil = u['foto']; // Sinkronisasi data asli
+  //   });
+  // }
 
+  //ini perubahan dari ai
   void _setUserData(Map<String, dynamic> u) {
     setState(() {
       _nama = u['nama'] ?? '-';
       _nim = u['nim'] ?? '-';
       _email = u['email'] ?? '-';
-      _fakultas = u['fakultas'] ?? '-';
-      _prodi = u['prodi'] ?? '-';
+      
+      // --- PERUBAHAN DI SINI ---
+      // Memeriksa apakah backend mengirim teks langsung, atau dalam bentuk objek (u['fakultas']['nama'])
+      _fakultas = u['nama_fakultas'] ?? 
+                  (u['fakultas'] is Map ? u['fakultas']['nama'] : u['fakultas']) ?? '-';
+                  
+      _prodi = u['prodi'] ?? u['nama_prodi'] ?? '-';
+      // -------------------------
+      
       _role = u['role'] ?? 'mahasiswa';
       _fotoProfil = u['foto']; // Sinkronisasi data asli
     });
