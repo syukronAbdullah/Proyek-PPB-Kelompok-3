@@ -52,7 +52,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       final data = await ApiService.getFakultas();
       setState(() => _fakultasList = data);
     } catch (e) {
-      // tetap lanjut
+      // tetap lanjut, fakultas akan kosong & user bisa retry
     }
   }
 
@@ -71,6 +71,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   void _handleRegister() async {
     FocusScope.of(context).unfocus();
 
+    // 1. Validasi: Semua field tidak boleh kosong
     if (_namaController.text.isEmpty ||
         _nimController.text.isEmpty ||
         _prodiController.text.isEmpty ||
@@ -78,6 +79,16 @@ class _RegisterScreenState extends State<RegisterScreen>
         _passwordController.text.isEmpty ||
         _konfirmasiController.text.isEmpty) {
       _showSnackBar('Semua field harus diisi!', isError: true);
+      return;
+    }
+
+    // 2. Validasi: WAJIB menggunakan email kampus UIN Alauddin
+    final emailText = _emailController.text.trim().toLowerCase();
+    if (!emailText.endsWith('@uin-alauddin.ac.id')) {
+      _showSnackBar(
+        'Pendaftaran gagal! Anda harus menggunakan email resmi mahasiswa (@uin-alauddin.ac.id)',
+        isError: true,
+      );
       return;
     }
 
@@ -97,7 +108,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     }
 
     if (!_agreeTerms) {
-      _showSnackBar('Harap setujui Syarat & Ketentuan terlebih dahulu!', isError: false);
+      _showSnackBar('Harap setujui Syarat & Ketentuan terlebih dahulu!', isError: true);
       return;
     }
 
@@ -105,56 +116,53 @@ class _RegisterScreenState extends State<RegisterScreen>
 
     try {
       final result = await ApiService.register({
-        'nama'                  : _namaController.text.trim(),
-        'nim'                   : _nimController.text.trim(),
-        'email'                 : _emailController.text.trim(),
-        'password'              : _passwordController.text,
-        'password_confirmation' : _konfirmasiController.text,
-        'fakultas_id'           : _selectedFakultasId,
-        'prodi'                 : _prodiController.text.trim(),
+        'nama': _namaController.text.trim(),
+        'nim': _nimController.text.trim(),
+        'email': _emailController.text.trim(),
+        'password': _passwordController.text,
+        'password_confirmation': _konfirmasiController.text,
+        'fakultas_id': _selectedFakultasId,
+        'prodi': _prodiController.text.trim(),
       });
 
-      if (mounted) {
-        setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
 
-        if (result['success'] == true) {
-          // Register berhasil → kembali ke Login dengan pesan sukses
-          Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white, size: 20),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Akun berhasil dibuat! Silakan login.',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
+      if (result['success'] == true) {
+        // Register berhasil → kembali ke Login dengan pesan sukses
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Akun berhasil dibuat! Silakan login.',
+                    style: TextStyle(fontWeight: FontWeight.w600),
                   ),
-                ],
-              ),
-              backgroundColor: AppColors.darkGreen2,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 3),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                ),
+              ],
             ),
-          );
-        } else {
-          // Tampilkan pesan error dari server
-          final message = result['message'] ??
-              (result['errors'] != null
-                  ? result['errors'].values.first[0]
-                  : 'Pendaftaran gagal!');
-          _showSnackBar(message.toString(), isError: true);
-        }
+            backgroundColor: AppColors.darkGreen2,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      } else {
+        // Tampilkan pesan error dari server
+        final message = result['message'] ??
+            (result['errors'] != null
+                ? result['errors'].values.first[0]
+                : 'Pendaftaran gagal!');
+        _showSnackBar(message.toString(), isError: true);
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        _showSnackBar('Tidak bisa terhubung ke server!', isError: true);
-      }
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showSnackBar('Tidak bisa terhubung ke server!', isError: true);
     }
   }
 
@@ -223,7 +231,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                           _buildField(
                             label: 'Email Mahasiswa',
                             controller: _emailController,
-                            hint: 'nama@student.uin-alauddin.ac.id',
+                            hint: 'nama@uin-alauddin.ac.id',
                             prefixIcon: Icons.email_outlined,
                             keyboardType: TextInputType.emailAddress,
                           ),
@@ -290,11 +298,158 @@ class _RegisterScreenState extends State<RegisterScreen>
               ),
               IconButton(
                 icon: const Icon(Icons.help_outline_rounded, color: Colors.white),
-                onPressed: () {},
+                onPressed: _showHelpDialog,
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          titlePadding: EdgeInsets.zero,
+          title: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              color: AppColors.darkGreen2,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.help_center_rounded, color: Colors.white, size: 24),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Pusat Bantuan',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.85,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Mengalami kendala saat mendaftar? Jangan khawatir, silakan hubungi tim teknis kami melalui jalur berikut:',
+                    style: TextStyle(fontSize: 13, color: Colors.grey, height: 1.4),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildHelpCard(
+                    icon: Icons.account_balance_rounded,
+                    title: 'Layanan Offline (Fisik)',
+                    subtitle: 'Gedung PUSTIPD UIN Alauddin Makassar, Kampus 2 Samata.',
+                  ),
+                  _buildHelpCard(
+                    icon: Icons.alternate_email_rounded,
+                    title: 'Layanan Online (Email)',
+                    subtitle: 'support@uin-alauddin.ac.id',
+                    isLink: true,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '*Catatan: Lampirkan Nama, NIM, dan tangkapan layar (screenshot) kendala Anda untuk mempercepat proses penanganan.',
+                    style: TextStyle(fontSize: 11, color: Colors.redAccent, fontStyle: FontStyle.italic),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              height: 45,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.darkGreen2,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text(
+                  'Selesai',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildHelpCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    bool isLink = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F9F8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E5E5), width: 1),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.darkGreen2.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: AppColors.darkGreen2, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF222222),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isLink ? AppColors.darkGreen2 : const Color(0xFF555555),
+                    fontWeight: isLink ? FontWeight.w600 : FontWeight.normal,
+                    decoration: isLink ? TextDecoration.underline : TextDecoration.none,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -411,11 +566,14 @@ class _RegisterScreenState extends State<RegisterScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Fakultas', style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF333333),
-        )),
+        const Text(
+          'Fakultas',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF333333),
+          ),
+        ),
         const SizedBox(height: 7),
         Container(
           decoration: BoxDecoration(
@@ -429,8 +587,7 @@ class _RegisterScreenState extends State<RegisterScreen>
               hint: Row(
                 children: [
                   const SizedBox(width: 12),
-                  const Icon(Icons.account_balance_outlined,
-                      color: Color(0xFF999999), size: 20),
+                  const Icon(Icons.account_balance_outlined, color: Color(0xFF999999), size: 20),
                   const SizedBox(width: 12),
                   Text(
                     _fakultasList.isEmpty ? 'Memuat...' : 'Pilih Fakultas',
@@ -444,8 +601,7 @@ class _RegisterScreenState extends State<RegisterScreen>
               isExpanded: true,
               icon: const Padding(
                 padding: EdgeInsets.only(right: 12),
-                child: Icon(Icons.keyboard_arrow_down_rounded,
-                    color: Color(0xFF666666)),
+                child: Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF666666)),
               ),
               borderRadius: BorderRadius.circular(12),
               padding: const EdgeInsets.symmetric(vertical: 4),
@@ -464,8 +620,8 @@ class _RegisterScreenState extends State<RegisterScreen>
               onChanged: (val) {
                 setState(() {
                   _selectedFakultasId = val;
-                  _selectedFakultasNama = _fakultasList
-                      .firstWhere((f) => f['id'] == val)['nama'];
+                  _selectedFakultasNama =
+                      _fakultasList.firstWhere((f) => f['id'] == val)['nama'];
                 });
               },
             ),
@@ -494,10 +650,12 @@ class _RegisterScreenState extends State<RegisterScreen>
         Expanded(
           child: Wrap(
             children: [
-              Text('Saya menyetujui ',
-                  style: TextStyle(fontSize: 13, color: Colors.black.withOpacity(0.55))),
+              Text(
+                'Saya menyetujui ',
+                style: TextStyle(fontSize: 13, color: Colors.black.withOpacity(0.55)),
+              ),
               GestureDetector(
-                onTap: () {},
+                onTap: _showTermsDialog,
                 child: const Text(
                   'Syarat & Ketentuan',
                   style: TextStyle(
@@ -509,12 +667,134 @@ class _RegisterScreenState extends State<RegisterScreen>
                   ),
                 ),
               ),
-              Text(' yang berlaku di lingkungan SILAPOR UIN.',
-                  style: TextStyle(fontSize: 13, color: Colors.black.withOpacity(0.55))),
+              Text(
+                ' yang berlaku di lingkungan SILAPOR UIN.',
+                style: TextStyle(fontSize: 13, color: Colors.black.withOpacity(0.55)),
+              ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  void _showTermsDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          titlePadding: EdgeInsets.zero,
+          title: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              color: AppColors.darkGreen2,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.gavel_rounded, color: Colors.white, size: 24),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Syarat & Ketentuan',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.85,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Sebelum mendaftar di sistem SILAPOR UIN, pastikan Anda memahami poin-poin berikut:',
+                    style: TextStyle(fontSize: 13, color: Colors.grey, height: 1.4),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSkItem('1', 'Akun ini hanya diperuntukkan bagi mahasiswa aktif UIN Alauddin Makassar.'),
+                  _buildSkItem('2', 'Pengguna wajib memberikan data pendaftaran yang valid (Nama asli, NIM, dan Fakultas).'),
+                  _buildSkItem('3', 'Penyalahgunaan akun atau pembuatan laporan palsu akan ditindaklanjuti secara disiplin oleh pihak kampus.'),
+                  _buildSkItem('4', 'Jaga kerahasiaan password Anda demi keamanan data pribadi mahasiswa.'),
+                ],
+              ),
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              height: 45,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.darkGreen2,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text(
+                  'Saya Mengerti',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSkItem(String number, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            margin: const EdgeInsets.only(top: 2),
+            decoration: BoxDecoration(
+              color: AppColors.darkGreen2.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                number,
+                style: const TextStyle(
+                  color: AppColors.darkGreen2,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF333333),
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -533,7 +813,8 @@ class _RegisterScreenState extends State<RegisterScreen>
         ),
         child: _isLoading
             ? const SizedBox(
-                width: 22, height: 22,
+                width: 22,
+                height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
@@ -542,8 +823,10 @@ class _RegisterScreenState extends State<RegisterScreen>
             : const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Daftar Sekarang',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
+                  Text(
+                    'Daftar Sekarang',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.3),
+                  ),
                   SizedBox(width: 8),
                   Icon(Icons.arrow_forward, size: 18),
                 ],

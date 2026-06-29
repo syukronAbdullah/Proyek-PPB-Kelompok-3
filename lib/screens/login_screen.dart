@@ -131,7 +131,10 @@ class _LoginScreenState extends State<LoginScreen>
       backgroundColor: Colors.white,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: FadeTransition(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480), // Mencegah UI melebar di Desktop
+            child: FadeTransition(
           opacity: _fadeAnim,
           child: SlideTransition(
             position: _slideAnim,
@@ -160,6 +163,8 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
                 _buildInfoBanner(),
               ],
+            ),
+          ),
             ),
           ),
         ),
@@ -228,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen>
           keyboardType: TextInputType.emailAddress,
           style: const TextStyle(fontSize: 14, color: Color(0xFF222222)),
           decoration: _inputDecoration(
-              hint: 'nama@student.uin-alauddin.ac.id',
+              hint: 'nama@uin-alauddin.ac.id',
               prefixIcon: Icons.email_outlined),
         ),
       ],

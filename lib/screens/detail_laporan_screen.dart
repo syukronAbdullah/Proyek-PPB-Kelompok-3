@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../Models/laporan_model.dart';
+import '../models/laporan_model.dart';
 
 class DetailLaporanScreen extends StatelessWidget {
   final LaporanModel laporan;
@@ -23,7 +23,10 @@ class DetailLaporanScreen extends StatelessWidget {
       statusBg = const Color(0xFFE3F2FD);
     }
 
-    return Scaffold(
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 800), // Mencegah UI melebar di Desktop
+        child: Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0,
@@ -181,6 +184,8 @@ class DetailLaporanScreen extends StatelessWidget {
               ),
             )
           ],
+        ),
+      ),
         ),
       ),
     );

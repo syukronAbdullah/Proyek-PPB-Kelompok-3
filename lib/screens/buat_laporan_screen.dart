@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../Models/app_colors.dart';
-import '../Models/kategori_model.dart';
+import '../models/app_colors.dart';
+import '../models/kategori_model.dart';
 import '../services/api_service.dart';
 
 class BuatLaporanScreen extends StatefulWidget {
@@ -106,7 +106,10 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 800), // Mencegah UI melebar di Desktop
+        child: Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: const Color(0xFF0D4A28),
@@ -252,6 +255,8 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
                 ),
               ),
             ),
+        ),
+      ),
     );
   }
 
@@ -286,16 +291,14 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
   Widget _buildDummyPhotoTile(String url) {
     return Stack(
       children: [
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
             color: Colors.grey[200],
-            image: const DecorationImage(
-              image: AssetImage('assets/images/placeholder_mockup.png'), // Jika ada asset gambar lokal
-            fit: BoxFit.cover,
+            child: const Center(
+              child: Icon(Icons.image_outlined, color: Colors.black26, size: 40),
             ),
           ),
-          child: const Center(child: Icon(Icons.image, color: Colors.black12, size: 40)),
         ),
         Positioned(
           top: 6,

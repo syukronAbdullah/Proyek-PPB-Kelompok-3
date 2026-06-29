@@ -25,13 +25,11 @@ class LaporanModel {
   });
 
   factory LaporanModel.fromJson(Map<String, dynamic> json) {
-    // Ambil nama kategori
     String kategori = 'Lainnya';
     if (json['kategori'] != null && json['kategori']['nama'] != null) {
       kategori = json['kategori']['nama'];
     }
 
-    // Format waktu
     String waktu = '-';
     if (json['created_at'] != null) {
       try {
@@ -109,7 +107,6 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() => _isLoading = true);
 
     try {
-      // 1. Ambil data user dari SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final userRaw = prefs.getString('user');
       if (userRaw != null) {
@@ -121,11 +118,9 @@ class _HomeScreenState extends State<HomeScreen>
         });
       }
 
-      // 2. Ambil data terbaru dari API (me endpoint)
       final meResult = await ApiService.getMe();
       if (meResult['success'] == true && meResult['user'] != null) {
         final user = meResult['user'];
-        // Simpan data terbaru ke SharedPreferences
         prefs.setString('user', jsonEncode(user));
         setState(() {
           _namaUser = user['nama'] ?? _namaUser;
@@ -134,7 +129,6 @@ class _HomeScreenState extends State<HomeScreen>
         });
       }
 
-      // 3. Ambil data laporan & statistik
       final response = await ApiService.getLaporan();
       if (response['success'] == true) {
         final stats = response['stats'];
@@ -175,66 +169,73 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Cek lebar layar untuk menentukan mode responsif
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isMobile = screenWidth < 600;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF2F4F3),
-      body: IndexedStack(
-        index: _selectedNav,
+      // Drawer hanya dipasang jika di layar hp/mobile
+      drawer: isMobile ? _buildDrawer() : null,
+      body: Column(
         children: [
-          _buildMainDashboardContent(),
-          const LaporanScreen(),
-          const NotifikasiScreen(),
-          const ProfileScreen(),
-        ],
-      ),
-      bottomNavigationBar: _buildBottomNav(),
-    );
-  }
-
-  Widget _buildMainDashboardContent() {
-    return RefreshIndicator(
-      onRefresh: _loadDashboardData,
-      color: const Color(0xFF1A5E35),
-      child: Column(
-        children: [
-          _buildAppBar(),
+          // Bar atas selalu tampil konsisten di semua tab (Beranda/Laporan/Notifikasi/Profil)
+          _buildAppBar(isMobile),
           Expanded(
-            child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                          Color(0xFF1A5E35)),
-                    ),
-                  )
-                : FadeTransition(
-                    opacity: _fadeAnim,
-                    child: SlideTransition(
-                      position: _slideAnim,
-                      child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding:
-                            const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildWelcomeCard(),
-                            const SizedBox(height: 14),
-                            _buildStatsRow(),
-                            const SizedBox(height: 14),
-                            _buildBuatLaporanButton(),
-                            const SizedBox(height: 22),
-                            _buildLaporanTerbaru(),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+            child: IndexedStack(
+              index: _selectedNav,
+              children: [
+                _buildMainDashboardContent(isMobile),
+                const LaporanScreen(),
+                const NotifikasiScreen(),
+                const ProfileScreen(),
+              ],
+            ),
           ),
         ],
       ),
+      // Navigasi bawah hanya muncul di HP/Mobile
+      bottomNavigationBar: isMobile ? _buildBottomNav() : null,
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildMainDashboardContent(bool isMobile) {
+    return RefreshIndicator(
+      onRefresh: _loadDashboardData,
+      color: const Color(0xFF1A5E35),
+      child: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                    Color(0xFF1A5E35)),
+              ),
+            )
+          : FadeTransition(
+              opacity: _fadeAnim,
+              child: SlideTransition(
+                position: _slideAnim,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildWelcomeCard(),
+                      const SizedBox(height: 14),
+                      _buildStatsRow(),
+                      const SizedBox(height: 14),
+                      _buildBuatLaporanButton(),
+                      const SizedBox(height: 22),
+                      _buildLaporanTerbaru(),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildAppBar(bool isMobile) {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -246,26 +247,45 @@ class _HomeScreenState extends State<HomeScreen>
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.menu, color: Colors.white, size: 26),
-                onPressed: () {},
-              ),
-              const Expanded(
-                child: Text(
-                  'SILAPOR UIN',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: 0.5),
+              // Jika di Mobile tampilkan Hamburger, jika di Web/Desktop sembunyikan
+              if (isMobile)
+                Builder(
+                  builder: (context) => IconButton(
+                    icon: const Icon(Icons.menu, color: Colors.white, size: 26),
+                    onPressed: () => Scaffold.of(context).openDrawer(),
+                  ),
+                )
+              else
+                const Padding(
+                  padding: EdgeInsets.only(left: 8, right: 16),
+                  child: Icon(Icons.school_rounded, color: Colors.white, size: 28),
                 ),
+              
+              const Text(
+                'SILAPOR UIN',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 0.5),
               ),
+              
+              const Spacer(),
+              
+              // Navigasi Horizontal bar atas (HANYA muncul saat di Desktop/Web)
+              if (!isMobile) ...[
+                _buildDesktopNavItem(0, Icons.home_rounded, 'Beranda'),
+                _buildDesktopNavItem(1, Icons.description_outlined, 'Laporan'),
+                _buildDesktopNavItem(2, Icons.notifications_outlined, 'Notifikasi'),
+                _buildDesktopNavItem(3, Icons.person_outline_rounded, 'Profil'),
+                const SizedBox(width: 16),
+              ],
+
               IconButton(
-                icon: const Icon(Icons.logout_rounded,
-                    color: Colors.white, size: 22),
+                icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 22),
                 onPressed: () async {
                   await ApiService.logout();
                   if (mounted) Navigator.of(context).pop();
@@ -273,6 +293,38 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // Widget pembantu khusus tombol navigasi atas versi desktop/tablet
+  Widget _buildDesktopNavItem(int index, IconData icon, String label) {
+    final isActive = _selectedNav == index;
+    return InkWell(
+      onTap: () => setState(() => _selectedNav = index),
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white.withOpacity(0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -668,6 +720,80 @@ class _HomeScreenState extends State<HomeScreen>
             }),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDrawer() {
+    return Drawer(
+      child: Column(
+        children: [
+          UserAccountsDrawerHeader(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF0D4A28), Color(0xFF1A6B3A)],
+              ),
+            ),
+            currentAccountPicture: const CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Icon(Icons.person, color: Color(0xFF1A5E35), size: 40),
+            ),
+            accountName: Text(
+              _namaUser,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            accountEmail: Text(
+              'NIM: $_nimUser\n$_prodiUser',
+              style: const TextStyle(fontSize: 12, height: 1.3),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.home_rounded, color: Color(0xFF1A5E35)),
+            title: const Text('Beranda', style: TextStyle(fontWeight: FontWeight.w600)),
+            onTap: () {
+              Navigator.pop(context);
+              setState(() => _selectedNav = 0);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.description_outlined, color: Color(0xFF1A5E35)),
+            title: const Text('Daftar Laporan', style: TextStyle(fontWeight: FontWeight.w600)),
+            onTap: () {
+              Navigator.pop(context);
+              setState(() => _selectedNav = 1);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.notifications_outlined, color: Color(0xFF1A5E35)),
+            title: const Text('Notifikasi', style: TextStyle(fontWeight: FontWeight.w600)),
+            onTap: () {
+              Navigator.pop(context);
+              setState(() => _selectedNav = 2);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.person_outline_rounded, color: Color(0xFF1A5E35)),
+            title: const Text('Profil Saya', style: TextStyle(fontWeight: FontWeight.w600)),
+            onTap: () {
+              Navigator.pop(context);
+              setState(() => _selectedNav = 3);
+            },
+          ),
+          const Divider(),
+          const Spacer(),
+          ListTile(
+            leading: const Icon(Icons.logout_rounded, color: Colors.red),
+            title: const Text('Keluar Akun', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            onTap: () async {
+              Navigator.pop(context);
+              await ApiService.logout();
+              if (mounted) Navigator.of(context).pop();
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }

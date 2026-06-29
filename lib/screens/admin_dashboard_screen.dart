@@ -193,25 +193,98 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isMobile = screenWidth < 600;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF2F4F3),
-      body: IndexedStack(
-        index: _selectedNav,
+      drawer: isMobile ? _buildDrawer() : null,
+      body: Column(
         children: [
-          _buildDashboardTab(),  // index 0 = Beranda
-          _buildLaporanTab(),    // index 1 = Laporan
-          _buildPlaceholderTab(Icons.notifications_outlined, 'Notifikasi'),
-          _buildPlaceholderTab(Icons.person_outline_rounded, 'Profil'),
+          // Bar atas selalu tampil konsisten di semua tab (Beranda/Laporan/Notifikasi/Profil)
+          _buildAppBar(isMobile),
+          Expanded(
+            child: IndexedStack(
+              index: _selectedNav,
+              children: [
+                _buildDashboardTab(),  // index 0 = Beranda
+                _buildLaporanTab(),    // index 1 = Laporan
+                _buildPlaceholderTab(Icons.notifications_outlined, 'Notifikasi'),
+                _buildPlaceholderTab(Icons.person_outline_rounded, 'Profil'),
+              ],
+            ),
+          ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: isMobile ? _buildBottomNav() : null,
+    );
+  }
+
+  // ════════════════════════════════════════════════════════
+  // DRAWER (Mobile only)
+  // ════════════════════════════════════════════════════════
+  Widget _buildDrawer() {
+    final items = [
+      _NavItem(icon: Icons.home_rounded, label: 'Beranda'),
+      _NavItem(icon: Icons.list_alt_rounded, label: 'Laporan'),
+      _NavItem(icon: Icons.notifications_outlined, label: 'Notifikasi'),
+      _NavItem(icon: Icons.person_outline_rounded, label: 'Profil'),
+    ];
+
+    return Drawer(
+      child: Column(
+        children: [
+          const UserAccountsDrawerHeader(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF0D4A28), Color(0xFF1A6B3A)],
+              ),
+            ),
+            currentAccountPicture: CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Icon(Icons.admin_panel_settings_rounded,
+                  color: Color(0xFF1A5E35), size: 36),
+            ),
+            accountName: Text('Panel Admin',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            accountEmail: Text('Sarana & Prasarana UIN'),
+          ),
+          ...List.generate(items.length, (i) {
+            return ListTile(
+              leading: Icon(items[i].icon, color: const Color(0xFF1A5E35)),
+              title: Text(items[i].label,
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _selectedNav = i);
+                if (i == 1) _loadSemuaLaporan();
+                if (i == 0) _loadDashboard();
+              },
+            );
+          }),
+          const Divider(),
+          const Spacer(),
+          ListTile(
+            leading: const Icon(Icons.logout_rounded, color: Colors.red),
+            title: const Text('Keluar',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            onTap: () {
+              Navigator.pop(context);
+              _handleLogout();
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
     );
   }
 
   // ════════════════════════════════════════════════════════
   // APP BAR
   // ════════════════════════════════════════════════════════
-  Widget _buildAppBar() {
+  Widget _buildAppBar(bool isMobile) {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -226,16 +299,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              // Logo ikon
-              Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
+              // Hamburger hanya di mobile, logo ikon di desktop
+              if (isMobile)
+                Builder(
+                  builder: (context) => IconButton(
+                    icon: const Icon(Icons.menu, color: Colors.white, size: 24),
+                    onPressed: () => Scaffold.of(context).openDrawer(),
+                  ),
+                )
+              else
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.account_balance_rounded,
+                      color: Colors.white, size: 20),
                 ),
-                child: const Icon(Icons.account_balance_rounded,
-                    color: Colors.white, size: 20),
-              ),
               const SizedBox(width: 10),
               const Text('SILAPOR UIN',
                   style: TextStyle(
@@ -244,6 +325,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       color: Colors.white,
                       letterSpacing: 0.5)),
               const Spacer(),
+
+              // Navigasi horizontal (hanya di Desktop/Web)
+              if (!isMobile) ...[
+                _buildDesktopNavItem(0, Icons.home_rounded, 'Beranda'),
+                _buildDesktopNavItem(1, Icons.list_alt_rounded, 'Laporan'),
+                _buildDesktopNavItem(2, Icons.notifications_outlined, 'Notifikasi'),
+                _buildDesktopNavItem(3, Icons.person_outline_rounded, 'Profil'),
+                const SizedBox(width: 16),
+              ],
+
               // Avatar admin
               GestureDetector(
                 onTap: _handleLogout,
@@ -264,13 +355,48 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Tombol navigasi atas versi desktop/tablet
+  Widget _buildDesktopNavItem(int index, IconData icon, String label) {
+    final isActive = _selectedNav == index;
+    return InkWell(
+      onTap: () {
+        setState(() => _selectedNav = index);
+        if (index == 1) _loadSemuaLaporan();
+        if (index == 0) _loadDashboard();
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white.withOpacity(0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ════════════════════════════════════════════════════════
   // TAB 0: BERANDA / DASHBOARD
   // ════════════════════════════════════════════════════════
   Widget _buildDashboardTab() {
     return Column(
       children: [
-        _buildAppBar(),
         Expanded(
           child: _isLoading
               ? const Center(
@@ -511,7 +637,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _buildLaporanTab() {
     return Column(
       children: [
-        _buildAppBar(),
         // Search bar
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -860,7 +985,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _buildPlaceholderTab(IconData icon, String label) {
     return Column(
       children: [
-        _buildAppBar(),
         Expanded(
           child: Center(
             child: Column(

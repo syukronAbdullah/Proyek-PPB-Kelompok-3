@@ -98,7 +98,10 @@ class _AdminDetailScreenState extends State<AdminDetailScreen> {
     final createdAt  = DateTime.tryParse(_laporan['created_at'] ?? '');
     final updatedAt  = DateTime.tryParse(_laporan['updated_at'] ?? '');
 
-    return Scaffold(
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 800), // Mencegah UI melebar di Desktop
+        child: Scaffold(
       backgroundColor: const Color(0xFFF2F4F3),
       body: Column(
         children: [
@@ -215,6 +218,8 @@ class _AdminDetailScreenState extends State<AdminDetailScreen> {
             ),
           ),
         ],
+      ),
+        ),
       ),
     );
   }

@@ -89,12 +89,17 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(),
-            Expanded(flex: 5, child: _buildIllustrationPager()),
-            Expanded(flex: 4, child: _buildBottomCard()),
-          ],
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480), // Mencegah UI melebar di Desktop
+            child: Column(
+              children: [
+                _buildTopBar(),
+                Expanded(flex: 5, child: _buildIllustrationPager()),
+                Expanded(flex: 4, child: _buildBottomCard()),
+              ],
+            ),
+          ),
         ),
       ),
     );
