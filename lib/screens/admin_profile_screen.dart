@@ -5,23 +5,21 @@ import '../services/api_service.dart';
 import 'login_screen.dart';
 import 'change_password_screen.dart'; // Sesuaikan relative path jika berbeda folder
 
-class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+class AdminProfileScreen extends StatefulWidget {
+  const AdminProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<AdminProfileScreen> createState() => _AdminProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _AdminProfileScreenState extends State<AdminProfileScreen> {
   bool _isLoading = true;
 
   String _nama = '-';
-  String _nim = '-';
   String _email = '-';
-  String _fakultas = '-';
-  String _prodi = '-';
-  String _role = 'mahasiswa';
-  String? _fotoProfil; // Variabel asli Anda aman terpasang kembali
+  String _role = 'admin';
+  String _unitKerja = 'Sarana & Prasarana UIN';
+  String? _fotoProfil;
 
   @override
   void initState() {
@@ -54,42 +52,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _setUserData(Map<String, dynamic> u) {
-  print('=== DEBUG USER DATA ===');
-  print(u);
-  print('=== PRODI FIELD: ${u['prodi']} ===');
-  print('=== TIPE PRODI: ${u['prodi'].runtimeType} ==='); // tambahkan baris ini
-  setState(() {
-    _nama = u['nama'] ?? '-';
-    _nim = u['nim'] ?? '-';
-    _email = u['email'] ?? '-';
+    setState(() {
+      _nama = u['nama'] ?? '-';
+      _email = u['email'] ?? '-';
+      _role = u['role'] ?? 'admin';
 
-    // Fakultas: handle baik bentuk objek maupun string lama
-    final fakultasData = u['fakultas'];
-    if (fakultasData is Map) {
-      _fakultas = fakultasData['nama_fakultas'] ?? fakultasData['nama'] ?? '-';
-    } else {
-      _fakultas = u['nama_fakultas'] ?? fakultasData ?? '-';
-    }
+      // Unit kerja: gunakan field dari backend jika sudah tersedia,
+      // jika belum ada, fallback ke default unit kerja statis.
+      _unitKerja = u['unit_kerja'] ?? u['unit'] ?? 'Sarana & Prasarana UIN';
 
-    // Prodi: handle baik bentuk objek maupun string lama
-    final prodiData = u['prodi'];
-    if (prodiData is Map) {
-      _prodi = prodiData['nama_prodi'] ?? '-';
-    } else {
-      _prodi = u['nama_prodi'] ?? prodiData ?? '-';
-    }
-
-    _role = u['role'] ?? 'mahasiswa';
-    _fotoProfil = u['foto'];
-  });
-}
+      _fotoProfil = u['foto'];
+    });
+  }
 
   Future<void> _handleLogout() async {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Keluar Aplikasi?'),
-        content: const Text('Apakah Anda yakin ingin keluar dari akun SILAPOR UIN Anda?'),
+        content: const Text('Apakah Anda yakin ingin keluar dari akun Admin SILAPOR UIN Anda?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
           TextButton(
@@ -112,6 +93,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+
     return Container(
       width: double.infinity,
       color: const Color(0xFFF8FAFC),
@@ -150,7 +132,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       color: const Color(0xFF0D4A28),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       child: const Text(
-        'Profil Pengguna',
+        'Profil Admin',
         style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
       ),
     );
@@ -170,7 +152,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           CircleAvatar(
             radius: 40,
             backgroundColor: const Color(0xFFE8F5EE),
-            child: const Icon(Icons.person, size: 46, color: Color(0xFF1A5E35)),
+            child: const Icon(Icons.admin_panel_settings_rounded, size: 46, color: Color(0xFF1A5E35)),
           ),
           const SizedBox(height: 12),
           Text(_nama, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B))),
@@ -190,13 +172,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE2E8F0))),
       child: Column(
         children: [
-          _buildInfoRow(Icons.badge_outlined, 'Nomor Induk Mahasiswa', _nim),
+          _buildInfoRow(Icons.person_outline_rounded, 'Nama', _nama),
           const Divider(height: 1, indent: 50),
-          _buildInfoRow(Icons.mail_outline_rounded, 'Email Institusi', _email),
+          _buildInfoRow(Icons.mail_outline_rounded, 'Email', _email),
           const Divider(height: 1, indent: 50),
-          _buildInfoRow(Icons.account_balance_outlined, 'Fakultas', _fakultas),
+          _buildInfoRow(Icons.shield_outlined, 'Role', _role[0].toUpperCase() + _role.substring(1)),
           const Divider(height: 1, indent: 50),
-          _buildInfoRow(Icons.school_outlined, 'Program Studi', _prodi),
+          _buildInfoRow(Icons.apartment_outlined, 'Unit Kerja', _unitKerja),
         ],
       ),
     );
@@ -259,8 +241,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         content: const SingleChildScrollView(
           child: Text(
             'Aplikasi SILAPOR UIN berkomitmen untuk melindungi seluruh data pribadi pengguna. '
-            'Data yang Anda masukkan saat pendaftaran (Nama, NIM, Email, Fakultas, dan Program Studi) '
-            'hanya digunakan untuk keperluan validasi identitas laporan fasilitas di lingkungan kampus '
+            'Data yang Anda masukkan saat pendaftaran (Nama, Email, Role, dan Unit Kerja) '
+            'hanya digunakan untuk keperluan pengelolaan dan validasi laporan fasilitas di lingkungan kampus '
             'dan tidak akan disebarluaskan kepada pihak ketiga tanpa persetujuan Anda.',
             style: TextStyle(height: 1.4),
           ),
@@ -279,7 +261,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ListTile(
       onTap: () {
         if (title == 'Kebijakan Privasi') {
-          _showPrivacyPolicy(); 
+          _showPrivacyPolicy();
         } else if (title == 'Ubah Kata Sandi') {
           Navigator.push(
             context,

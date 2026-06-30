@@ -16,6 +16,8 @@ class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
   bool _obscurePassword = true;
   bool _isLoading = false;
 
@@ -42,6 +44,8 @@ class _LoginScreenState extends State<LoginScreen>
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     _animController.dispose();
     super.dispose();
   }
@@ -135,36 +139,36 @@ class _LoginScreenState extends State<LoginScreen>
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480), // Mencegah UI melebar di Desktop
             child: FadeTransition(
-          opacity: _fadeAnim,
-          child: SlideTransition(
-            position: _slideAnim,
-            child: Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 40),
-                        _buildHeader(),
-                        const SizedBox(height: 40),
-                        _buildEmailField(),
-                        const SizedBox(height: 20),
-                        _buildPasswordField(),
-                        const SizedBox(height: 28),
-                        _buildLoginButton(),
-                        const SizedBox(height: 20),
-                        _buildRegisterRow(),
-                        const SizedBox(height: 40),
-                      ],
+              opacity: _fadeAnim,
+              child: SlideTransition(
+                position: _slideAnim,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 40),
+                            _buildHeader(),
+                            const SizedBox(height: 40),
+                            _buildEmailField(),
+                            const SizedBox(height: 20),
+                            _buildPasswordField(),
+                            const SizedBox(height: 28),
+                            _buildLoginButton(),
+                            const SizedBox(height: 20),
+                            _buildRegisterRow(),
+                            const SizedBox(height: 40),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                    _buildInfoBanner(),
+                  ],
                 ),
-                _buildInfoBanner(),
-              ],
-            ),
-          ),
+              ),
             ),
           ),
         ),
@@ -176,23 +180,12 @@ class _LoginScreenState extends State<LoginScreen>
     return Center(
       child: Column(
         children: [
-          Container(
+          // Logo langsung menggunakan assets tanpa dibungkus Container bawaan
+          Image.asset(
+            'assets/images/logoPolos.png',
             width: 64,
             height: 64,
-            decoration: BoxDecoration(
-              color: AppColors.darkGreen2,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.darkGreen2.withOpacity(0.30),
-                  blurRadius: 18,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: const Center(
-              child: Icon(Icons.account_balance, color: Colors.white, size: 30),
-            ),
+            fit: BoxFit.contain,
           ),
           const SizedBox(height: 20),
           const Text(
@@ -230,7 +223,10 @@ class _LoginScreenState extends State<LoginScreen>
         const SizedBox(height: 8),
         TextField(
           controller: _emailController,
+          focusNode: _emailFocus,
           keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_passwordFocus),
           style: const TextStyle(fontSize: 14, color: Color(0xFF222222)),
           decoration: _inputDecoration(
               hint: 'nama@uin-alauddin.ac.id',
@@ -252,7 +248,10 @@ class _LoginScreenState extends State<LoginScreen>
         const SizedBox(height: 8),
         TextField(
           controller: _passwordController,
+          focusNode: _passwordFocus,
           obscureText: _obscurePassword,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _handleLogin(),
           style: const TextStyle(fontSize: 14, color: Color(0xFF222222)),
           decoration: _inputDecoration(
             hint: 'Masukkan kata sandi',

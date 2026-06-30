@@ -111,23 +111,29 @@ class _HomeScreenState extends State<HomeScreen>
       final userRaw = prefs.getString('user');
       if (userRaw != null) {
         final userObj = jsonDecode(userRaw);
-        setState(() {
-          _namaUser = userObj['nama'] ?? 'User';
-          _nimUser = userObj['nim'] ?? '-';
-          _prodiUser = userObj['prodi'] ?? '-';
-        });
+setState(() {
+  _namaUser = userObj['nama'] ?? 'User';
+  _nimUser = userObj['nim'] ?? '-';
+  final prodiCache = userObj['prodi'];
+  _prodiUser = prodiCache is Map
+      ? (prodiCache['nama_prodi'] ?? '-')
+      : (prodiCache ?? '-');
+});
       }
 
       final meResult = await ApiService.getMe();
-      if (meResult['success'] == true && meResult['user'] != null) {
-        final user = meResult['user'];
-        prefs.setString('user', jsonEncode(user));
-        setState(() {
-          _namaUser = user['nama'] ?? _namaUser;
-          _nimUser = user['nim'] ?? _nimUser;
-          _prodiUser = user['prodi'] ?? _prodiUser;
-        });
-      }
+if (meResult['success'] == true && meResult['user'] != null) {
+  final user = meResult['user'];
+  prefs.setString('user', jsonEncode(user));
+  setState(() {
+    _namaUser = user['nama'] ?? _namaUser;
+    _nimUser = user['nim'] ?? _nimUser;
+    final prodiData = user['prodi'];
+    _prodiUser = prodiData is Map
+        ? (prodiData['nama_prodi'] ?? _prodiUser)
+        : (prodiData ?? _prodiUser);
+  });
+}
 
       final response = await ApiService.getLaporan();
       if (response['success'] == true) {
@@ -483,7 +489,7 @@ class _HomeScreenState extends State<HomeScreen>
           children: [
             Icon(Icons.add, size: 20),
             SizedBox(width: 6),
-            Text('+ Buat Laporan Baru',
+            Text('Buat Laporan Baru',
                 style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,

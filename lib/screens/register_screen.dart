@@ -13,10 +13,15 @@ class _RegisterScreenState extends State<RegisterScreen>
     with SingleTickerProviderStateMixin {
   final _namaController = TextEditingController();
   final _nimController = TextEditingController();
-  final _prodiController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _konfirmasiController = TextEditingController();
+
+  final _namaFocus = FocusNode();
+  final _nimFocus = FocusNode();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
+  final _konfirmasiFocus = FocusNode();
 
   bool _obscurePassword = true;
   bool _obscureKonfirmasi = true;
@@ -26,6 +31,10 @@ class _RegisterScreenState extends State<RegisterScreen>
   List<dynamic> _fakultasList = [];
   int? _selectedFakultasId;
   String? _selectedFakultasNama;
+
+  List<dynamic> _listProdi = [];
+  int? _selectedProdiId;
+  bool _isLoadingProdi = false;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -56,14 +65,34 @@ class _RegisterScreenState extends State<RegisterScreen>
     }
   }
 
+  Future<void> _loadProdi(int fakultasId) async {
+    setState(() {
+      _isLoadingProdi = true;
+      _listProdi = [];
+      _selectedProdiId = null;
+    });
+    try {
+      final data = await ApiService.getProdi(fakultasId);
+      setState(() => _listProdi = data);
+    } catch (e) {
+      // tetap lanjut, prodi akan kosong & user bisa retry
+    } finally {
+      if (mounted) setState(() => _isLoadingProdi = false);
+    }
+  }
+
   @override
   void dispose() {
     _namaController.dispose();
     _nimController.dispose();
-    _prodiController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _konfirmasiController.dispose();
+    _namaFocus.dispose();
+    _nimFocus.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    _konfirmasiFocus.dispose();
     _animController.dispose();
     super.dispose();
   }
@@ -74,7 +103,6 @@ class _RegisterScreenState extends State<RegisterScreen>
     // 1. Validasi: Semua field tidak boleh kosong
     if (_namaController.text.isEmpty ||
         _nimController.text.isEmpty ||
-        _prodiController.text.isEmpty ||
         _emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
         _konfirmasiController.text.isEmpty) {
@@ -94,6 +122,11 @@ class _RegisterScreenState extends State<RegisterScreen>
 
     if (_selectedFakultasId == null) {
       _showSnackBar('Pilih fakultas terlebih dahulu!', isError: true);
+      return;
+    }
+
+    if (_selectedProdiId == null) {
+      _showSnackBar('Pilih program studi terlebih dahulu!', isError: true);
       return;
     }
 
@@ -122,7 +155,7 @@ class _RegisterScreenState extends State<RegisterScreen>
         'password': _passwordController.text,
         'password_confirmation': _konfirmasiController.text,
         'fakultas_id': _selectedFakultasId,
-        'prodi': _prodiController.text.trim(),
+        'prodi_id': _selectedProdiId,
       });
 
       if (!mounted) return;
@@ -200,26 +233,29 @@ class _RegisterScreenState extends State<RegisterScreen>
                           _buildField(
                             label: 'Nama Lengkap',
                             controller: _namaController,
+                            focusNode: _namaFocus,
                             hint: 'Masukkan nama sesuai KTM',
                             prefixIcon: Icons.badge_outlined,
+                            textInputAction: TextInputAction.next,
+                            onSubmitted: (_) =>
+                                FocusScope.of(context).requestFocus(_nimFocus),
                           ),
                           const SizedBox(height: 16),
                           _buildField(
                             label: 'NIM (Nomor Induk Mahasiswa)',
                             controller: _nimController,
+                            focusNode: _nimFocus,
                             hint: 'Contoh: 60200124...',
                             prefixIcon: Icons.tag_rounded,
                             keyboardType: TextInputType.number,
+                            textInputAction: TextInputAction.next,
+                            onSubmitted: (_) =>
+                                FocusScope.of(context).requestFocus(_emailFocus),
                           ),
                           const SizedBox(height: 16),
                           _buildFakultasDropdown(),
                           const SizedBox(height: 16),
-                          _buildField(
-                            label: 'Program Studi',
-                            controller: _prodiController,
-                            hint: 'Masukkan program studi',
-                            prefixIcon: Icons.school_outlined,
-                          ),
+                          _buildProdiDropdown(),
                         ],
                       ),
                       const SizedBox(height: 14),
@@ -231,28 +267,39 @@ class _RegisterScreenState extends State<RegisterScreen>
                           _buildField(
                             label: 'Email Mahasiswa',
                             controller: _emailController,
+                            focusNode: _emailFocus,
                             hint: 'nama@uin-alauddin.ac.id',
                             prefixIcon: Icons.email_outlined,
                             keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.next,
+                            onSubmitted: (_) =>
+                                FocusScope.of(context).requestFocus(_passwordFocus),
                           ),
                           const SizedBox(height: 16),
                           _buildPasswordField(
                             label: 'Password',
                             controller: _passwordController,
+                            focusNode: _passwordFocus,
                             hint: 'Masukkan password minimal 8 karakter',
                             obscure: _obscurePassword,
                             onToggle: () => setState(
                                 () => _obscurePassword = !_obscurePassword),
+                            textInputAction: TextInputAction.next,
+                            onSubmitted: (_) => FocusScope.of(context)
+                                .requestFocus(_konfirmasiFocus),
                           ),
                           const SizedBox(height: 16),
                           _buildPasswordField(
                             label: 'Konfirmasi Password',
                             controller: _konfirmasiController,
+                            focusNode: _konfirmasiFocus,
                             hint: 'Ulangi password Anda',
                             obscure: _obscureKonfirmasi,
                             prefixIcon: Icons.verified_user_outlined,
                             onToggle: () => setState(
                                 () => _obscureKonfirmasi = !_obscureKonfirmasi),
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) => _handleRegister(),
                           ),
                         ],
                       ),
@@ -511,7 +558,10 @@ class _RegisterScreenState extends State<RegisterScreen>
     required TextEditingController controller,
     required String hint,
     required IconData prefixIcon,
+    FocusNode? focusNode,
     TextInputType keyboardType = TextInputType.text,
+    TextInputAction textInputAction = TextInputAction.next,
+    ValueChanged<String>? onSubmitted,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -520,7 +570,10 @@ class _RegisterScreenState extends State<RegisterScreen>
         const SizedBox(height: 7),
         TextField(
           controller: controller,
+          focusNode: focusNode,
           keyboardType: keyboardType,
+          textInputAction: textInputAction,
+          onSubmitted: onSubmitted,
           style: const TextStyle(fontSize: 14, color: Color(0xFF222222)),
           decoration: _inputDecoration(hint: hint, prefixIcon: prefixIcon),
         ),
@@ -534,7 +587,10 @@ class _RegisterScreenState extends State<RegisterScreen>
     required String hint,
     required bool obscure,
     required VoidCallback onToggle,
+    FocusNode? focusNode,
     IconData prefixIcon = Icons.lock_outline,
+    TextInputAction textInputAction = TextInputAction.next,
+    ValueChanged<String>? onSubmitted,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -543,7 +599,10 @@ class _RegisterScreenState extends State<RegisterScreen>
         const SizedBox(height: 7),
         TextField(
           controller: controller,
+          focusNode: focusNode,
           obscureText: obscure,
+          textInputAction: textInputAction,
+          onSubmitted: onSubmitted,
           style: const TextStyle(fontSize: 14, color: Color(0xFF222222)),
           decoration: _inputDecoration(
             hint: hint,
@@ -623,7 +682,82 @@ class _RegisterScreenState extends State<RegisterScreen>
                   _selectedFakultasNama =
                       _fakultasList.firstWhere((f) => f['id'] == val)['nama'];
                 });
+                if (val != null) {
+                  _loadProdi(val);
+                }
               },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProdiDropdown() {
+    final bool isEnabled = _selectedFakultasId != null && !_isLoadingProdi;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Program Studi',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF333333),
+          ),
+        ),
+        const SizedBox(height: 7),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF7F7F7),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE5E5E5), width: 1.2),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              value: _selectedProdiId,
+              hint: Row(
+                children: [
+                  const SizedBox(width: 12),
+                  const Icon(Icons.school_outlined, color: Color(0xFF999999), size: 20),
+                  const SizedBox(width: 12),
+                  Text(
+                    _selectedFakultasId == null
+                        ? 'Pilih fakultas terlebih dahulu'
+                        : (_isLoadingProdi ? 'Memuat prodi...' : 'Pilih Program Studi'),
+                    style: TextStyle(
+                      color: Colors.black.withOpacity(0.35),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+              isExpanded: true,
+              icon: const Padding(
+                padding: EdgeInsets.only(right: 12),
+                child: Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF666666)),
+              ),
+              borderRadius: BorderRadius.circular(12),
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              items: !isEnabled
+                  ? null
+                  : _listProdi.map((p) {
+                      return DropdownMenuItem<int>(
+                        value: p['id'],
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 44),
+                          child: Text(
+                            p['nama_prodi'] ?? 'Program Studi tidak tersedia',
+                            style: const TextStyle(fontSize: 14, color: Color(0xFF222222)),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+              onChanged: !isEnabled
+                  ? null
+                  : (val) {
+                      setState(() => _selectedProdiId = val);
+                    },
             ),
           ),
         ),

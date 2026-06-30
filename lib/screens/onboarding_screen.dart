@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/app_colors.dart';
 import '../models/onboarding_data.dart';
-import '../widgets/speaker_icon_painter.dart';
 import '../widgets/illustration_painter.dart';
 import 'login_screen.dart';
 
@@ -28,10 +27,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     super.initState();
     _contentController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 400),
     );
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.12),
+      begin: const Offset(0, 0.08),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _contentController,
@@ -58,23 +57,23 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         curve: Curves.easeInOut,
       );
     } else {
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (_, animation, __) => FadeTransition(
-            opacity: animation,
-            child: const LoginScreen(),
-          ),
-          transitionDuration: const Duration(milliseconds: 500),
-        ),
-      );
+      _navigateToLogin();
     }
   }
 
   void _skip() {
-    _pageController.animateToPage(
-      _pages.length - 1,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOut,
+    _navigateToLogin();
+  }
+
+  void _navigateToLogin() {
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (_, animation, __) => FadeTransition(
+          opacity: animation,
+          child: const LoginScreen(),
+        ),
+        transitionDuration: const Duration(milliseconds: 500),
+      ),
     );
   }
 
@@ -91,12 +90,64 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480), // Mencegah UI melebar di Desktop
+            constraints: const BoxConstraints(maxWidth: 480),
             child: Column(
               children: [
                 _buildTopBar(),
-                Expanded(flex: 5, child: _buildIllustrationPager()),
-                Expanded(flex: 4, child: _buildBottomCard()),
+                // PERBAIKAN: Konten utama (Gambar + Teks) sekarang bersatu di dalam Expanded PageView
+                Expanded(
+                  child: PageView.builder(
+                    controller: _pageController,
+                    onPageChanged: _onPageChanged,
+                    itemCount: _pages.length,
+                    itemBuilder: (_, i) {
+                      return Column(
+                        children: [
+                          Expanded(
+                            flex: 5,
+                            child: IllustrationPanel(
+                              illustration: _pages[i].illustration,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 28),
+                            child: SlideTransition(
+                              position: _slideAnim,
+                              child: FadeTransition(
+                                opacity: _fadeAnim,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _pages[i].title,
+                                      style: const TextStyle(
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF111111),
+                                        height: 1.2,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      _pages[i].description,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w400,
+                                        color: AppColors.black.withOpacity(0.5),
+                                        height: 1.6,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                _buildBottomControls(),
               ],
             ),
           ),
@@ -111,20 +162,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          // Logo
-          Container(
+          Image.asset(
+            'assets/images/logoPolos.png',
             width: 30,
             height: 30,
-            decoration: BoxDecoration(
-              color: AppColors.darkGreen2,
-              borderRadius: BorderRadius.circular(7),
-            ),
-            child: Center(
-              child: CustomPaint(
-                size: const Size(17, 15),
-                painter: SpeakerIconPainter(color: AppColors.white),
-              ),
-            ),
+            fit: BoxFit.contain,
           ),
           const SizedBox(width: 8),
           const Text(
@@ -154,35 +196,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  // ── Illustration pager ───────────────────────────────────────────────────
-  Widget _buildIllustrationPager() {
-    return PageView.builder(
-      controller: _pageController,
-      onPageChanged: _onPageChanged,
-      itemCount: _pages.length,
-      itemBuilder: (_, i) => IllustrationPanel(
-        illustration: _pages[i].illustration,
-      ),
-    );
-  }
-
-  // ── Bottom content card ──────────────────────────────────────────────────
-  Widget _buildBottomCard() {
+  // ── Bottom controls (Indicator & Button) ─────────────────────────────────
+  Widget _buildBottomControls() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 24, 28, 20),
+      padding: const EdgeInsets.fromLTRB(28, 20, 28, 20),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           _buildDotIndicators(),
-          const SizedBox(height: 20),
-          SlideTransition(
-            position: _slideAnim,
-            child: FadeTransition(
-              opacity: _fadeAnim,
-              child: _buildTextContent(),
-            ),
-          ),
-          const Spacer(),
+          const SizedBox(height: 32),
           _buildNextButton(),
         ],
       ),
@@ -191,6 +213,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   Widget _buildDotIndicators() {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
       children: List.generate(
         _pages.length,
         (i) {
@@ -207,33 +230,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           );
         },
       ),
-    );
-  }
-
-  Widget _buildTextContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          _pages[_currentPage].title,
-          style: const TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF111111),
-            height: 1.2,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          _pages[_currentPage].description,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: AppColors.black.withOpacity(0.5),
-            height: 1.6,
-          ),
-        ),
-      ],
     );
   }
 

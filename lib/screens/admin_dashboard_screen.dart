@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'login_screen.dart';
 import 'admin_detail_screen.dart';
+import 'admin_profile_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -205,12 +206,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _buildAppBar(isMobile),
           Expanded(
             child: IndexedStack(
-              index: _selectedNav,
-              children: [
-                _buildDashboardTab(),  // index 0 = Beranda
-                _buildLaporanTab(),    // index 1 = Laporan
-                _buildPlaceholderTab(Icons.notifications_outlined, 'Notifikasi'),
-                _buildPlaceholderTab(Icons.person_outline_rounded, 'Profil'),
+            index: _selectedNav,
+            children: [
+              _buildDashboardTab(),  // index 0 = Beranda
+              _buildLaporanTab(),    // index 1 = Laporan
+              _buildPlaceholderTab(Icons.notifications_outlined, 'Notifikasi'),
+              const AdminProfileScreen(),
               ],
             ),
           ),
@@ -596,7 +597,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     color: Color(0xFF111111))),
             const Spacer(),
             GestureDetector(
-              onTap: () => setState(() => _selectedNav = 1),
+              onTap: () => setState(() => _selectedNav = 3),
               child: const Text('Lihat Semua',
                   style: TextStyle(
                       fontSize: 13,

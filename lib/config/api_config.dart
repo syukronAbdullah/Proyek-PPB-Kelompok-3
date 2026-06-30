@@ -25,4 +25,12 @@ class ApiConfig {
   // Admin
   static const String adminDashboard = '$baseUrl/admin/dashboard';
   static const String adminLaporan   = '$baseUrl/admin/laporan';
+
+  // Ganti Password
+  //static const String gantiPassword = '$baseUrl/ganti-password';
+  static const String gantiPassword = '$baseUrl/profil/password';
+  // static const String gantiPassword = '$baseUrl/password';
+
+  // ambl prodi dari fakultas tertentu
+  static const String prodi = '$baseUrl/prodi';
 }

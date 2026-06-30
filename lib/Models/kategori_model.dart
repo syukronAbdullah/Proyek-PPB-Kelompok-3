@@ -9,7 +9,6 @@ class KategoriModel {
     required this.icon,
   });
 
-  // Factory untuk mapping dari JSON backend ke object Dart
   factory KategoriModel.fromJson(Map<String, dynamic> json) {
     return KategoriModel(
       id: json['id'] ?? 0,

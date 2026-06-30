@@ -78,6 +78,18 @@ class ApiService {
     await clearToken();
   }
 
+  // ── UBAH KATA SANDI (BARU TAMBAHAN) ────────────────────────
+  static Future<Map<String, dynamic>> changePassword(
+      Map<String, dynamic> body) async {
+    // Memanggil API ganti password dengan membawa header token keamanan login
+    final res = await http.post(
+      Uri.parse(ApiConfig.gantiPassword), // Pastikan variabel ini ada di ApiConfig
+      headers: await _headers(),
+      body: jsonEncode(body),
+    );
+    return jsonDecode(res.body);
+  }
+
   // ── GET ME (data user yang sedang login) ───────────────────
   static Future<Map<String, dynamic>> getMe() async {
     final res = await http.get(
@@ -213,4 +225,16 @@ class ApiService {
     );
     return jsonDecode(res.body);
   }
+
+  // ── GET PRODI BERDASARKAN FAKULTAS ─────────────────────────
+  static Future<List<dynamic>> getProdi(int? fakultasId) async {
+  // Jika fakultasId diisi, tembak ke URL: /api/prodi?fakultas_id=1
+  final url = fakultasId != null 
+      ? '${ApiConfig.prodi}?fakultas_id=$fakultasId' 
+      : ApiConfig.prodi;
+      
+  final res = await http.get(Uri.parse(url));
+  final data = jsonDecode(res.body);
+  return data['prodi'] ?? [];
+ }
 }

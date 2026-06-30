@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/app_colors.dart';
-import '../widgets/speaker_icon_painter.dart';
 import 'onboarding_screen.dart';
+import 'dart:async';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -18,6 +18,10 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<Offset> _slideSubtitleAnim;
   late Animation<Offset> _slideBadgeAnim;
   late Animation<double> _fadeProgressAnim;
+
+  // untuk loading timer
+  Timer? _timer;
+  bool _isNavigating = false;
 
   @override
   void initState() {
@@ -51,21 +55,34 @@ class _SplashScreenState extends State<SplashScreen>
       parent: _controller,
       curve: const Interval(0.45, 0.8, curve: Curves.easeOut),
     ));
+    
+    // PERBAIKAN: Menutup tanda kurung CurvedAnimation dengan benar di sini
     _fadeProgressAnim = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.7, 1.0, curve: Curves.easeIn),
     );
 
     _controller.forward();
+
+    // PERBAIKAN: Meletakkan timer di tempat yang benar secara terpisah
+    _timer = Timer(const Duration(seconds: 5), () {
+      _goToOnboarding();
+    });
   }
 
   @override
   void dispose() {
+    _timer?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
   void _goToOnboarding() {
+    if (_isNavigating || !mounted) return;
+
+    _isNavigating = true;
+    _timer?.cancel();
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (_, animation, __) => FadeTransition(
@@ -225,30 +242,13 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Widget _buildIconCard() {
-    return Container(
-      width: 88,
-      height: 88,
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.black.withOpacity(0.18),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: AppColors.midGreen.withOpacity(0.25),
-            blurRadius: 32,
-            spreadRadius: 4,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return SizedBox(
+      width: 150,
+      height: 150,
       child: Center(
-        child: CustomPaint(
-          size: const Size(44, 38),
-          painter: SpeakerIconPainter(color: AppColors.iconGreen),
+        child: Image.asset(
+          'assets/images/logoPolos.png',
+          fit: BoxFit.contain,
         ),
       ),
     );
