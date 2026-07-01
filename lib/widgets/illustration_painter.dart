@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/onboarding_data.dart';
-import '../models/app_colors.dart';
+import '../theme/app_colors.dart';
 
 class IllustrationPanel extends StatelessWidget {
   final OnboardingIllustration illustration;

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/app_colors.dart';
+import '../theme/app_colors.dart';
 import 'onboarding_screen.dart';
 import 'dart:async';
 

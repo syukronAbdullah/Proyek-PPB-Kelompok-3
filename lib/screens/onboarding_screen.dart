@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/app_colors.dart';
+import '../theme/app_colors.dart';
 import '../models/onboarding_data.dart';
 import '../widgets/illustration_painter.dart';
 import 'login_screen.dart';
