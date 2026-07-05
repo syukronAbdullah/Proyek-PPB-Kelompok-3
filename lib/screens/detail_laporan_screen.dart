@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/laporan_model.dart';
+import '../config/api_config.dart';
 
 class DetailLaporanScreen extends StatelessWidget {
   final LaporanModel laporan;
@@ -12,16 +13,26 @@ class DetailLaporanScreen extends StatelessWidget {
     Color statusBg;
     final currentStatus = laporan.status.toLowerCase();
 
-    if (currentStatus == 'menunggu') {
-      statusColor = const Color(0xFFE07B00);
-      statusBg = const Color(0xFFFFF3E0);
-    } else if (currentStatus == 'selesai') {
-      statusColor = const Color(0xFF1A6B3A);
-      statusBg = const Color(0xFFE8F5EE);
-    } else {
-      statusColor = const Color(0xFF1565C0);
-      statusBg = const Color(0xFFE3F2FD);
-    }
+//     Color statusColor;
+// Color statusBg;
+// final currentStatus = laporan.status.toLowerCase();
+
+if (currentStatus == 'menunggu') {
+  statusColor = const Color(0xFFE07B00);
+  statusBg = const Color(0xFFFFF3E0);
+} else if (currentStatus == 'diproses') {
+  statusColor = const Color(0xFF1565C0);
+  statusBg = const Color(0xFFE3F2FD);
+} else if (currentStatus == 'selesai') {
+  statusColor = const Color(0xFF1A6B3A);
+  statusBg = const Color(0xFFE8F5EE);
+} else if (currentStatus == 'ditolak') {
+  statusColor = const Color(0xFFDC2626);
+  statusBg = const Color(0xFFFEF2F2);
+} else {
+  statusColor = Colors.grey;
+  statusBg = const Color(0xFFF1F5F9);
+}
 
     return Center(
       child: ConstrainedBox(
@@ -73,14 +84,20 @@ class DetailLaporanScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          currentStatus == 'menunggu' ? 'Menunggu' : (currentStatus == 'selesai' ? 'Selesai' : 'Diproses'),
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: statusColor),
-                        ),
+  currentStatus == 'menunggu'
+      ? 'Menunggu'
+      : currentStatus == 'diproses'
+          ? 'Diproses'
+          : currentStatus == 'selesai'
+              ? 'Selesai'
+              : currentStatus == 'ditolak'
+                  ? 'Ditolak'
+                  : currentStatus,)
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
-
+                  
                   // Section Foto Laporan (Horizontal Scroll)
                   _buildPhotoSection(),
                   const SizedBox(height: 16),
@@ -190,35 +207,79 @@ class DetailLaporanScreen extends StatelessWidget {
       ),
     );
   }
+ Widget _buildPhotoSection() {
+  final fotoUrls = laporan.fotoUrls;
 
-  Widget _buildPhotoSection() {
-    if (laporan.foto.isEmpty) {
-      return Container(
-        height: 160,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Center(
-          child: Icon(Icons.image_outlined, size: 40, color: Color(0xFF94A3B8)),
-        ),
-      );
-    }
-
-    return SizedBox(
+  if (fotoUrls.isEmpty) {
+    return Container(
       height: 160,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: laporan.foto.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 12.0),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Center(
+        child: Icon(
+          Icons.image_outlined,
+          size: 40,
+          color: Color(0xFF94A3B8),
+        ),
+      ),
+    );
+  }
+
+  return SizedBox(
+    height: 160,
+    child: ListView.builder(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      itemCount: fotoUrls.length,
+      itemBuilder: (context, index) {
+        final imageUrl = fotoUrls[index].startsWith('http')
+            ? fotoUrls[index]
+            : '${ApiConfig.baseUrl.replaceFirst('/api', '')}${fotoUrls[index]}';
+
+        return Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: GestureDetector(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (_) => Dialog(
+                    backgroundColor: Colors.black,
+                    insetPadding: const EdgeInsets.all(16),
+                    child: Stack(
+                      children: [
+                        InteractiveViewer(
+                          minScale: 1,
+                          maxScale: 4,
+                          child: Center(
+                            child: Image.network(
+                              imageUrl,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
               child: Image.network(
-                laporan.foto[index],
+                imageUrl,
                 width: 160,
                 height: 160,
                 fit: BoxFit.cover,
@@ -226,17 +287,20 @@ class DetailLaporanScreen extends StatelessWidget {
                   return Container(
                     width: 160,
                     color: const Color(0xFFE2E8F0),
-                    child: const Icon(Icons.broken_image_outlined, color: Color(0xFF94A3B8)),
+                    child: const Icon(
+                      Icons.broken_image_outlined,
+                      color: Color(0xFF94A3B8),
+                    ),
                   );
                 },
               ),
             ),
-          );
-        },
-      ),
-    );
-  }
-
+          ),
+        );
+      },
+    ),
+  );
+}
   Widget _buildTimelineNode({
     required String title,
     required String subtitle,

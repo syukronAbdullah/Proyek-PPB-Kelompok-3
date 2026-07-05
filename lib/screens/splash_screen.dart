@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import 'onboarding_screen.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -66,7 +68,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     // PERBAIKAN: Meletakkan timer di tempat yang benar secara terpisah
     _timer = Timer(const Duration(seconds: 5), () {
-      _goToOnboarding();
+      _goToNextScreen();
     });
   }
 
@@ -77,22 +79,29 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  void _goToOnboarding() {
-    if (_isNavigating || !mounted) return;
+  Future<void> _goToNextScreen() async {
+  if (_isNavigating || !mounted) return;
 
-    _isNavigating = true;
-    _timer?.cancel();
+  _isNavigating = true;
+  _timer?.cancel();
 
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (_, animation, __) => FadeTransition(
-          opacity: animation,
-          child: const OnboardingScreen(),
-        ),
-        transitionDuration: const Duration(milliseconds: 600),
+  final prefs = await SharedPreferences.getInstance();
+  final hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
+
+  if (!mounted) return;
+
+  Navigator.of(context).pushReplacement(
+    PageRouteBuilder(
+      pageBuilder: (_, animation, __) => FadeTransition(
+        opacity: animation,
+        child: hasSeenOnboarding
+            ? const LoginScreen()
+            : const OnboardingScreen(),
       ),
-    );
-  }
+      transitionDuration: const Duration(milliseconds: 600),
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +109,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     return Scaffold(
       body: GestureDetector(
-        onTap: _goToOnboarding,
+        onTap: _goToNextScreen,
         child: Container(
           width: double.infinity,
           height: double.infinity,

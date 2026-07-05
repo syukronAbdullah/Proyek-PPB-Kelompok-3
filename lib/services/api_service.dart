@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
+import 'dart:io';
 
 class ApiService {
 
@@ -144,14 +145,40 @@ class ApiService {
 
   // ── POST BUAT LAPORAN BARU ─────────────────────────────────
   static Future<Map<String, dynamic>> buatLaporan(
-      Map<String, dynamic> body) async {
-    final res = await http.post(
-      Uri.parse(ApiConfig.laporan),
-      headers: await _headers(),
-      body: jsonEncode(body),
-    );
-    return jsonDecode(res.body);
+  Map<String, dynamic> body,
+  List<File> photos,
+) async {
+  final token = await getToken();
+
+  final request = http.MultipartRequest(
+    'POST',
+    Uri.parse(ApiConfig.laporan),
+  );
+
+  request.headers['Accept'] = 'application/json';
+
+  if (token != null) {
+    request.headers['Authorization'] = 'Bearer $token';
   }
+
+  body.forEach((key, value) {
+    request.fields[key] = value.toString();
+  });
+
+  for (final photo in photos) {
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'foto[]',
+        photo.path,
+      ),
+    );
+  }
+
+  final streamedResponse = await request.send();
+  final response = await http.Response.fromStream(streamedResponse);
+
+  return jsonDecode(response.body);
+}
 
   // ── DELETE LAPORAN ─────────────────────────────────────────
   static Future<Map<String, dynamic>> hapusLaporan(int id) async {

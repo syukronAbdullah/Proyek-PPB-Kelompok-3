@@ -3,6 +3,7 @@ import '../theme/app_colors.dart';
 import '../models/onboarding_data.dart';
 import '../widgets/illustration_painter.dart';
 import 'login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -65,17 +66,22 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _navigateToLogin();
   }
 
-  void _navigateToLogin() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (_, animation, __) => FadeTransition(
-          opacity: animation,
-          child: const LoginScreen(),
-        ),
-        transitionDuration: const Duration(milliseconds: 500),
+  Future<void> _navigateToLogin() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('has_seen_onboarding', true);
+
+  if (!mounted) return;
+
+  Navigator.of(context).pushReplacement(
+    PageRouteBuilder(
+      pageBuilder: (_, animation, __) => FadeTransition(
+        opacity: animation,
+        child: const LoginScreen(),
       ),
-    );
-  }
+      transitionDuration: const Duration(milliseconds: 500),
+    ),
+  );
+}
 
   void _onPageChanged(int index) {
     setState(() => _currentPage = index);

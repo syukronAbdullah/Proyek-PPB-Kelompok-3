@@ -86,7 +86,15 @@ class ImagePickerService {
           imageQuality: AppConfig.imageQuality,
         );
 
-        return images.map((e) => File(e.path)).toList();
+        final files = images.map((e) => File(e.path)).toList();
+
+        for (final file in files) {
+          final sizeKb = await file.length() / 1024;
+          debugPrint('Foto hasil picker: ${file.path}');
+          debugPrint('Ukuran foto: ${sizeKb.toStringAsFixed(2)} KB');
+        }
+
+        return files;
       }
 
       // ==========================

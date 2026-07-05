@@ -1,5 +1,10 @@
 class ApiConfig {
-  static const String baseUrl = 'http://127.0.0.1:8000/api';
+  // static const String baseUrl = 'http://127.0.0.1:8000/api'; // demo di laptop
+  static const String baseUrl = 'http://192.168.1.74:8000/api'; // demo di hp, api berubah ubah, cek dulu pakai ipconfig di cmd, cari IPv4 Address
+ 
+  // jalankan php artisan serve --host=0.0.0.0 --port=8000 di Laravel untuk mobile
+  // printah diatas untuk bisa mengakses server laravel dari port manapun
+
 
   // Auth
   static const String login    = '$baseUrl/login';

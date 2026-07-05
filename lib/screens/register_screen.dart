@@ -66,20 +66,36 @@ class _RegisterScreenState extends State<RegisterScreen>
   }
 
   Future<void> _loadProdi(int fakultasId) async {
-    setState(() {
-      _isLoadingProdi = true;
-      _listProdi = [];
-      _selectedProdiId = null;
-    });
-    try {
-      final data = await ApiService.getProdi(fakultasId);
-      setState(() => _listProdi = data);
-    } catch (e) {
-      // tetap lanjut, prodi akan kosong & user bisa retry
-    } finally {
-      if (mounted) setState(() => _isLoadingProdi = false);
+  setState(() {
+    _isLoadingProdi = true;
+    _listProdi = [];
+    _selectedProdiId = null;
+  });
+
+  try {
+    final data = await ApiService.getProdi(fakultasId);
+  
+    final Map<int, dynamic> uniqueProdi = {};
+
+    for (final item in data) {
+      final id = item['id'];
+      if (id is int) {
+        uniqueProdi[id] = item;
+      }
     }
+
+    if (!mounted) return;
+
+    setState(() {
+      _listProdi = uniqueProdi.values.toList();
+    });
+  } catch (e) {
+    if (!mounted) return;
+    setState(() => _listProdi = []);
+  } finally {
+    if (mounted) setState(() => _isLoadingProdi = false);
   }
+}
 
   @override
   void dispose() {
@@ -974,6 +990,8 @@ class _RegisterScreenState extends State<RegisterScreen>
     fontWeight: FontWeight.w600,
     color: Color(0xFF333333),
   );
+  
+  get data => null;
 
   InputDecoration _inputDecoration({
     required String hint,

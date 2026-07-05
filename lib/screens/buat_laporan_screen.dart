@@ -80,7 +80,10 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
     };
 
     try {
-      final response = await ApiService.buatLaporan(bodyData);
+      final response = await ApiService.buatLaporan(
+          bodyData,
+          _photos.map((photo) => photo.file).toList(),
+        );
       if (response['success'] == true) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -116,19 +119,21 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
 
   // GPT Project: Fungsi penampung pencarian/pemilihan gambar
   Future<void> _pickImages() async {
-    debugPrint("_pickImages dipanggil");
-    final files = await ImagePickerService.pickMultipleImages();
+  final files = await ImagePickerService.pickMultipleImages();
 
-    if (files.isEmpty) return;
+  if (files.isEmpty) return;
 
-    debugPrint("Jumlah file dipilih: ${files.length}");
+  final duplicateResult = _removeDuplicatePhotos(files);
+  final selectionResult = _addPhotos(duplicateResult.files);
 
-    setState(() {
-      _photos.addAll(
-        files.map((file) => PhotoItem(file: file)),
-      );
-    });
-  }
+  if (!mounted) return;
+
+  _showPhotoSelectionSummary(
+    added: selectionResult.addedCount,
+    duplicate: duplicateResult.duplicateCount,
+    overLimit: selectionResult.overLimitCount,
+  );
+}
 
   DuplicateCheckResult _removeDuplicatePhotos(List<File> files) {
     final existingPaths = _photos.map((photo) => photo.file.path).toSet();

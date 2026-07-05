@@ -206,11 +206,14 @@ class _LaporanScreenState extends State<LaporanScreen> {
         side: const BorderSide(color: Color(0xFFE2E8F0), width: 1),
       ),
       child: InkWell(
-        onTap: () {
-          Navigator.push(
+        onTap: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => DetailLaporanScreen(laporan: item)),
           );
+          if (mounted) {
+            _fetchListLaporan();
+          }
         },
         borderRadius: BorderRadius.circular(14),
         child: Padding(

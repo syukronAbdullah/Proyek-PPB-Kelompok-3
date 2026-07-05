@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../config/api_config.dart';
 
 class AdminDetailScreen extends StatefulWidget {
   final Map<String, dynamic> laporan;
@@ -36,6 +37,46 @@ class _AdminDetailScreenState extends State<AdminDetailScreen> {
 
   Future<void> _simpanPerubahan() async {
     if (_selectedStatus == null) return;
+
+    // Konfirmasi jika akan mengubah ke status final
+if (_selectedStatus == 'selesai' || _selectedStatus == 'ditolak') {
+  final bool? confirm = await showDialog<bool>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          _selectedStatus == 'selesai'
+              ? 'Selesaikan Laporan?'
+              : 'Tolak Laporan?',
+        ),
+        content: Text(
+          _selectedStatus == 'selesai'
+              ? 'Setelah laporan diselesaikan, status tidak dapat diubah lagi.'
+              : 'Setelah laporan ditolak, status tidak dapat diubah lagi.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              _selectedStatus == 'selesai'
+                  ? 'Selesaikan'
+                  : 'Tolak',
+            ),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (confirm != true) return;
+}
     setState(() => _isLoading = true);
     try {
       final result = await ApiService.updateStatusLaporan(
@@ -344,19 +385,72 @@ class _AdminDetailScreenState extends State<AdminDetailScreen> {
     );
   }
 
-  Widget _fotoBox(dynamic url, {bool isLarge = false}) {
-    return Image.network(
-      url.toString(),
+  Widget _fotoBox(dynamic foto, {bool isLarge = false}) {
+  String imageUrl = '';
+
+  if (foto is String) {
+    imageUrl = foto;
+  } else if (foto is Map && foto['url_foto'] != null) {
+    imageUrl = foto['url_foto'].toString();
+  }
+
+  if (imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
+    imageUrl =
+        '${ApiConfig.baseUrl.replaceFirst('/api', '')}$imageUrl';
+  }
+  return GestureDetector(
+    onTap: () {
+      showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: const EdgeInsets.all(16),
+          child: Stack(
+            children: [
+              InteractiveViewer(
+                minScale: 1,
+                maxScale: 4,
+                child: Center(
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+    child: Image.network(
+      imageUrl,
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
-      errorBuilder: (_, __, ___) => Container(
-        color: const Color(0xFFE2E8F0),
-        child: const Icon(Icons.broken_image_outlined,
-            color: Colors.grey, size: 28),
-      ),
+      errorBuilder: (_, error, __) {
+        return Container(
+          color: const Color(0xFFE2E8F0),
+          child: const Icon(
+            Icons.broken_image_outlined,
+            color: Colors.grey,
+            size: 28,
+          ),
+        );
+      },
       loadingBuilder: (_, child, progress) {
         if (progress == null) return child;
+
         return Container(
           color: const Color(0xFFE2E8F0),
           child: const Center(
@@ -367,8 +461,9 @@ class _AdminDetailScreenState extends State<AdminDetailScreen> {
           ),
         );
       },
-    );
-  }
+    ),
+  );
+}
 
   // ── Status Badge ─────────────────────────────────────────
   Widget _buildStatusBadge(String status) {
@@ -504,6 +599,10 @@ class _AdminDetailScreenState extends State<AdminDetailScreen> {
 
   // ── Tindakan Admin ───────────────────────────────────────
   Widget _buildTindakanAdmin() {
+    // Status final: laporan sudah selesai atau ditolak, tidak boleh diubah lagi.
+    final bool isFinalStatus =
+        _laporan['status'] == 'selesai' || _laporan['status'] == 'ditolak';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -543,6 +642,7 @@ class _AdminDetailScreenState extends State<AdminDetailScreen> {
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF334155))),
           const SizedBox(height: 8),
+
           Container(
             decoration: BoxDecoration(
               color: const Color(0xFFF7F7F7),
@@ -551,6 +651,7 @@ class _AdminDetailScreenState extends State<AdminDetailScreen> {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
+                iconDisabledColor: Colors.grey,
                 value: _selectedStatus,
                 isExpanded: true,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -563,10 +664,27 @@ class _AdminDetailScreenState extends State<AdminDetailScreen> {
                         style: const TextStyle(fontSize: 14)),
                   );
                 }).toList(),
-                onChanged: (v) => setState(() => _selectedStatus = v),
+                onChanged: isFinalStatus
+                    ? null
+                    : (v) => setState(() => _selectedStatus = v),
               ),
             ),
           ),
+          if (isFinalStatus) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.lock_outline_rounded,
+                    size: 13, color: Colors.black38),
+                const SizedBox(width: 4),
+                Text(
+                  'Status sudah final, tidak dapat diubah lagi',
+                  style: TextStyle(
+                      fontSize: 11.5, color: Colors.black.withOpacity(0.45)),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 14),
 
           // Catatan
@@ -579,6 +697,7 @@ class _AdminDetailScreenState extends State<AdminDetailScreen> {
           TextField(
             controller: _catatanController,
             maxLines: 4,
+            enabled: !isFinalStatus,
             style: const TextStyle(fontSize: 13),
             decoration: InputDecoration(
               hintText: 'Tambahkan catatan penanganan untuk mahasiswa...',
@@ -609,15 +728,21 @@ class _AdminDetailScreenState extends State<AdminDetailScreen> {
             width: double.infinity,
             height: 50,
             child: ElevatedButton.icon(
-              onPressed: _isLoading ? null : _simpanPerubahan,
+              onPressed: (_isLoading || isFinalStatus) ? null : _simpanPerubahan,
               icon: _isLoading
                   ? const SizedBox(
                       width: 18, height: 18,
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.save_rounded, size: 18),
+                  : Icon(
+                      isFinalStatus ? Icons.lock_outline_rounded : Icons.save_rounded,
+                      size: 18),
               label: Text(
-                _isLoading ? 'Menyimpan...' : 'Simpan Perubahan',
+                _isLoading
+                    ? 'Menyimpan...'
+                    : isFinalStatus
+                        ? 'Status Final'
+                        : 'Simpan Perubahan',
                 style: const TextStyle(
                     fontSize: 15, fontWeight: FontWeight.w700),
               ),

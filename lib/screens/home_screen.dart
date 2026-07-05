@@ -3,62 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../services/api_service.dart';
+import '../models/laporan_model.dart';
 import 'buat_laporan_screen.dart';
 import 'laporan_screen.dart';
 import 'notifikasi_screen.dart';
 import 'profile_screen.dart';
-
-// ── Model Laporan sederhana ───────────────────────────────────────────────────
-class LaporanModel {
-  final int id;
-  final String judul;
-  final String status;
-  final String namaKategori;
-  final String waktu;
-
-  const LaporanModel({
-    required this.id,
-    required this.judul,
-    required this.status,
-    required this.namaKategori,
-    required this.waktu,
-  });
-
-  factory LaporanModel.fromJson(Map<String, dynamic> json) {
-    String kategori = 'Lainnya';
-    if (json['kategori'] != null && json['kategori']['nama'] != null) {
-      kategori = json['kategori']['nama'];
-    }
-
-    String waktu = '-';
-    if (json['created_at'] != null) {
-      try {
-        final dt = DateTime.parse(json['created_at']).toLocal();
-        final now = DateTime.now();
-        final diff = now.difference(dt);
-        if (diff.inMinutes < 60) {
-          waktu = '${diff.inMinutes} menit yang lalu';
-        } else if (diff.inHours < 24) {
-          waktu = '${diff.inHours} jam yang lalu';
-        } else if (diff.inDays == 1) {
-          waktu = 'Kemarin';
-        } else {
-          waktu = '${diff.inDays} hari yang lalu';
-        }
-      } catch (_) {
-        waktu = json['created_at'].toString();
-      }
-    }
-
-    return LaporanModel(
-      id: json['id'] ?? 0,
-      judul: json['judul'] ?? '-',
-      status: json['status'] ?? 'menunggu',
-      namaKategori: kategori,
-      waktu: waktu,
-    );
-  }
-}
+import 'detail_laporan_screen.dart';
+import 'package:flutter/services.dart';
 
 // ── Home Screen ───────────────────────────────────────────────────────────────
 class HomeScreen extends StatefulWidget {
@@ -71,6 +22,64 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   int _selectedNav = 0;
+  final List<int> _tabHistory = [0];
+
+  // Fungsi navigasi tab dengan history yang lebih pintar:
+  // Jika user kembali ke tab sebelumnya (misalnya balik dari 1 ke 0),
+  // tidak menambah entry baru, cukup "pop" dari history.
+  // Jika user pindah ke tab baru, tambahkan ke history.
+
+void _changeTab(int index) {
+  if (_selectedNav == index) return;
+
+  setState(() {
+    // Kalau tab sudah pernah ada di history,
+    // hapus semua history setelah tab tersebut.
+    final existingIndex = _tabHistory.indexOf(index);
+
+    if (existingIndex != -1) {
+      _tabHistory.removeRange(existingIndex + 1, _tabHistory.length);
+    } else {
+      _tabHistory.add(index);
+    }
+
+    _selectedNav = index;
+  });
+}
+
+//untuk konfirmasi keluar dari aplikasi
+Future<bool> _showExitDialog() async {
+  final result = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          'Keluar Aplikasi',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'Apakah Anda yakin ingin keluar dari SILAPOR?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Keluar'),
+          ),
+        ],
+      );
+    },
+  );
+
+  return result ?? false;
+}
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -111,29 +120,29 @@ class _HomeScreenState extends State<HomeScreen>
       final userRaw = prefs.getString('user');
       if (userRaw != null) {
         final userObj = jsonDecode(userRaw);
-setState(() {
-  _namaUser = userObj['nama'] ?? 'User';
-  _nimUser = userObj['nim'] ?? '-';
-  final prodiCache = userObj['prodi'];
-  _prodiUser = prodiCache is Map
-      ? (prodiCache['nama_prodi'] ?? '-')
-      : (prodiCache ?? '-');
-});
+        setState(() {
+          _namaUser = userObj['nama'] ?? 'User';
+          _nimUser = userObj['nim'] ?? '-';
+          final prodiCache = userObj['prodi'];
+          _prodiUser = prodiCache is Map
+              ? (prodiCache['nama_prodi'] ?? '-')
+              : (prodiCache ?? '-');
+        });
       }
 
       final meResult = await ApiService.getMe();
-if (meResult['success'] == true && meResult['user'] != null) {
-  final user = meResult['user'];
-  prefs.setString('user', jsonEncode(user));
-  setState(() {
-    _namaUser = user['nama'] ?? _namaUser;
-    _nimUser = user['nim'] ?? _nimUser;
-    final prodiData = user['prodi'];
-    _prodiUser = prodiData is Map
-        ? (prodiData['nama_prodi'] ?? _prodiUser)
-        : (prodiData ?? _prodiUser);
-  });
-}
+      if (meResult['success'] == true && meResult['user'] != null) {
+        final user = meResult['user'];
+        prefs.setString('user', jsonEncode(user));
+        setState(() {
+          _namaUser = user['nama'] ?? _namaUser;
+          _nimUser = user['nim'] ?? _nimUser;
+          final prodiData = user['prodi'];
+          _prodiUser = prodiData is Map
+              ? (prodiData['nama_prodi'] ?? _prodiUser)
+              : (prodiData ?? _prodiUser);
+        });
+      }
 
       final response = await ApiService.getLaporan();
       if (response['success'] == true) {
@@ -179,29 +188,55 @@ if (meResult['success'] == true && meResult['user'] != null) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isMobile = screenWidth < 600;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF2F4F3),
-      // Drawer hanya dipasang jika di layar hp/mobile
-      drawer: isMobile ? _buildDrawer() : null,
-      body: Column(
-        children: [
-          // Bar atas selalu tampil konsisten di semua tab (Beranda/Laporan/Notifikasi/Profil)
-          _buildAppBar(isMobile),
-          Expanded(
-            child: IndexedStack(
-              index: _selectedNav,
-              children: [
-                _buildMainDashboardContent(isMobile),
-                const LaporanScreen(),
-                const NotifikasiScreen(),
-                const ProfileScreen(),
-              ],
+    return PopScope(
+      canPop: false, // Mencegah pop otomatis, kita tangani sendiri
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+
+        // Masih ada history → kembali ke tab sebelumnya
+        if (_tabHistory.length > 1) {
+          setState(() {
+            _tabHistory.removeLast();
+            _selectedNav = _tabHistory.last;
+          });
+          return;
+        }
+
+        // Sudah di Dashboard → tampilkan dialog keluar
+        final exit = await _showExitDialog();
+
+        if (exit && context.mounted) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF2F4F3),
+
+        // Drawer hanya dipasang jika di layar hp/mobile
+        drawer: isMobile ? _buildDrawer() : null,
+
+        body: Column(
+          children: [
+            // Bar atas selalu tampil konsisten di semua tab
+            _buildAppBar(isMobile),
+
+            Expanded(
+              child: IndexedStack(
+                index: _selectedNav,
+                children: [
+                  _buildMainDashboardContent(isMobile),
+                  const LaporanScreen(),
+                  const NotifikasiScreen(),
+                  const ProfileScreen(),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+
+        // Navigasi bawah hanya muncul di HP/Mobile
+        bottomNavigationBar: isMobile ? _buildBottomNav() : null,
       ),
-      // Navigasi bawah hanya muncul di HP/Mobile
-      bottomNavigationBar: isMobile ? _buildBottomNav() : null,
     );
   }
 
@@ -269,7 +304,7 @@ if (meResult['success'] == true && meResult['user'] != null) {
                   padding: EdgeInsets.only(left: 8, right: 16),
                   child: Icon(Icons.school_rounded, color: Colors.white, size: 28),
                 ),
-              
+
               const Text(
                 'SILAPOR UIN',
                 style: TextStyle(
@@ -278,9 +313,9 @@ if (meResult['success'] == true && meResult['user'] != null) {
                     color: Colors.white,
                     letterSpacing: 0.5),
               ),
-              
+
               const Spacer(),
-              
+
               // Navigasi Horizontal bar atas (HANYA muncul saat di Desktop/Web)
               if (!isMobile) ...[
                 _buildDesktopNavItem(0, Icons.home_rounded, 'Beranda'),
@@ -308,7 +343,7 @@ if (meResult['success'] == true && meResult['user'] != null) {
   Widget _buildDesktopNavItem(int index, IconData icon, String label) {
     final isActive = _selectedNav == index;
     return InkWell(
-      onTap: () => setState(() => _selectedNav = index),
+      onTap: () => _changeTab(index),
       borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
@@ -513,7 +548,9 @@ if (meResult['success'] == true && meResult['user'] != null) {
                     color: Color(0xFF111111))),
             const Spacer(),
             GestureDetector(
-              onTap: () => setState(() => _selectedNav = 1),
+              onTap: () {
+                _changeTab(1);
+              },
               child: const Text('Lihat Semua',
                   style: TextStyle(
                       fontSize: 13,
@@ -579,7 +616,18 @@ if (meResult['success'] == true && meResult['user'] != null) {
                 : 'Diproses';
 
     return GestureDetector(
-      onTap: () => setState(() => _selectedNav = 1),
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetailLaporanScreen(laporan: item),
+          ),
+        );
+
+        if (mounted) {
+          _loadDashboardData();
+        }
+      },
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
@@ -685,7 +733,7 @@ if (meResult['success'] == true && meResult['user'] != null) {
               final isActive = i == _selectedNav;
               return Expanded(
                 child: GestureDetector(
-                  onTap: () => setState(() => _selectedNav = i),
+                  onTap: () => _changeTab(i),
                   behavior: HitTestBehavior.opaque,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -760,7 +808,7 @@ if (meResult['success'] == true && meResult['user'] != null) {
             title: const Text('Beranda', style: TextStyle(fontWeight: FontWeight.w600)),
             onTap: () {
               Navigator.pop(context);
-              setState(() => _selectedNav = 0);
+              _changeTab(0);
             },
           ),
           ListTile(
@@ -768,7 +816,7 @@ if (meResult['success'] == true && meResult['user'] != null) {
             title: const Text('Daftar Laporan', style: TextStyle(fontWeight: FontWeight.w600)),
             onTap: () {
               Navigator.pop(context);
-              setState(() => _selectedNav = 1);
+              _changeTab(1);
             },
           ),
           ListTile(
@@ -776,7 +824,7 @@ if (meResult['success'] == true && meResult['user'] != null) {
             title: const Text('Notifikasi', style: TextStyle(fontWeight: FontWeight.w600)),
             onTap: () {
               Navigator.pop(context);
-              setState(() => _selectedNav = 2);
+              _changeTab(2);
             },
           ),
           ListTile(
@@ -784,7 +832,7 @@ if (meResult['success'] == true && meResult['user'] != null) {
             title: const Text('Profil Saya', style: TextStyle(fontWeight: FontWeight.w600)),
             onTap: () {
               Navigator.pop(context);
-              setState(() => _selectedNav = 3);
+              _changeTab(3);
             },
           ),
           const Divider(),

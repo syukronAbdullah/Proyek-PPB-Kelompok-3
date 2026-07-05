@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class LaporanModel {
   final int id;
   final int userId;
@@ -36,7 +38,24 @@ class LaporanModel {
     }
   }
 
+  // getter ui foto
+  List<String> get fotoUrls {
+  return foto.map((item) {
+    if (item is String) {
+      return item;
+    }
+
+    if (item is Map && item['url_foto'] != null) {
+      return item['url_foto'].toString();
+    }
+
+    return '';
+  }).where((url) => url.isNotEmpty).toList();
+}
+
   factory LaporanModel.fromJson(Map<String, dynamic> json) {
+    debugPrint('RAW FOTO FIELD: ${json['foto']}');
+    debugPrint('RAW FOTOS FIELD: ${json['fotos']}');
     // Ambil objek kategori di dalam JSON
     final kategoriObj = json['kategori'] as Map<String, dynamic>?;
 

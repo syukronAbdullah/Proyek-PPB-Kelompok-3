@@ -54,10 +54,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _setUserData(Map<String, dynamic> u) {
-  print('=== DEBUG USER DATA ===');
-  print(u);
-  print('=== PRODI FIELD: ${u['prodi']} ===');
-  print('=== TIPE PRODI: ${u['prodi'].runtimeType} ==='); // tambahkan baris ini
   setState(() {
     _nama = u['nama'] ?? '-';
     _nim = u['nim'] ?? '-';

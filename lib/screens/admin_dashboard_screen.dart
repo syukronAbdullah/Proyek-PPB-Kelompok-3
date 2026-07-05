@@ -3,6 +3,7 @@ import '../services/api_service.dart';
 import 'login_screen.dart';
 import 'admin_detail_screen.dart';
 import 'admin_profile_screen.dart';
+import 'package:flutter/services.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -12,7 +13,8 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  int _selectedNav = 1; // default ke tab Laporan seperti di desain
+  int _selectedNav = 0;
+  final List<int> _tabHistory = [0]; // default ke tab dashboard (index 0)
   bool _isLoading = true;
 
   // Stats
@@ -22,6 +24,65 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _selesai = 0;
   int _ditolak = 0;
   int _totalUser = 0;
+
+  // ── Navigasi tab terpusat + history stack ──
+  void _changeTab(int index) {
+  if (_selectedNav == index) return;
+
+  setState(() {
+    // Kalau tab sudah pernah ada di history,
+    // hapus semua history setelah tab tersebut.
+    final existingIndex = _tabHistory.indexOf(index);
+
+    if (existingIndex != -1) {
+      _tabHistory.removeRange(existingIndex + 1, _tabHistory.length);
+    } else {
+      _tabHistory.add(index);
+    }
+
+    _selectedNav = index;
+  });
+}
+
+  // ── Konfirmasi keluar aplikasi ──
+  Future<bool> _showExitDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Keluar Aplikasi',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            'Apakah kamu yakin ingin keluar dari aplikasi?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFDC2626),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text('Keluar'),
+            ),
+          ],
+        );
+      },
+    );
+    return result ?? false;
+  }
 
   // Laporan
   List<dynamic> _laporanList = [];
@@ -49,11 +110,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         final stats = result['stats'];
         final List<dynamic> laporan = result['laporan_terbaru'] ?? [];
         setState(() {
-          _total     = stats['total'] ?? 0;
-          _menunggu  = stats['menunggu'] ?? 0;
-          _diproses  = stats['diproses'] ?? 0;
-          _selesai   = stats['selesai'] ?? 0;
-          _ditolak   = stats['ditolak'] ?? 0;
+          _total = stats['total'] ?? 0;
+          _menunggu = stats['menunggu'] ?? 0;
+          _diproses = stats['diproses'] ?? 0;
+          _selesai = stats['selesai'] ?? 0;
+          _ditolak = stats['ditolak'] ?? 0;
           _totalUser = stats['total_user'] ?? 0;
           _laporanList = laporan;
         });
@@ -61,7 +122,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memuat data: $e'),
+          SnackBar(
+              content: Text('Gagal memuat data: $e'),
               backgroundColor: Colors.red),
         );
       }
@@ -75,15 +137,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     setState(() => _isLoading = true);
     try {
       final result = await ApiService.getAdminLaporan(
-          status: status == 'semua' ? null : status,
-          search: search);
+          status: status == 'semua' ? null : status, search: search);
       if (result['success'] == true) {
         setState(() {
           _laporanList = result['laporan']['data'] ?? [];
         });
       }
     } catch (e) {
-      debugPrint('Error: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -91,7 +151,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Future<void> _updateStatus(int id, String status, {String? catatan}) async {
     try {
-      final result = await ApiService.updateStatusLaporan(id, status, catatan: catatan);
+      final result =
+          await ApiService.updateStatusLaporan(id, status, catatan: catatan);
       if (mounted) {
         if (result['success'] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -99,7 +160,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               content: const Text('Status laporan berhasil diperbarui!'),
               backgroundColor: const Color(0xFF1A5E35),
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape:
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           );
           _loadDashboard();
@@ -148,7 +210,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               backgroundColor: const Color(0xFF1A5E35),
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape:
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             child: Text('Ya, $label'),
           ),
@@ -183,7 +246,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFDC2626),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape:
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             child: const Text('Keluar'),
           ),
@@ -194,30 +258,52 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final width = MediaQuery.of(context).size.width;
+    final isMobile = width < 768;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF2F4F3),
-      drawer: isMobile ? _buildDrawer() : null,
-      body: Column(
-        children: [
-          // Bar atas selalu tampil konsisten di semua tab (Beranda/Laporan/Notifikasi/Profil)
-          _buildAppBar(isMobile),
-          Expanded(
-            child: IndexedStack(
-            index: _selectedNav,
-            children: [
-              _buildDashboardTab(),  // index 0 = Beranda
-              _buildLaporanTab(),    // index 1 = Laporan
-              _buildPlaceholderTab(Icons.notifications_outlined, 'Notifikasi'),
-              const AdminProfileScreen(),
-              ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+
+        if (_tabHistory.length > 1) {
+          setState(() {
+            _tabHistory.removeLast();
+            _selectedNav = _tabHistory.last;
+          });
+          return;
+        }
+
+        final exit = await _showExitDialog();
+
+        if (exit && context.mounted) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF2F4F3),
+        drawer: isMobile ? _buildDrawer() : null,
+        body: Column(
+          children: [
+            _buildAppBar(isMobile),
+            Expanded(
+              child: IndexedStack(
+                index: _selectedNav,
+                children: [
+                  _buildDashboardTab(),
+                  _buildLaporanTab(),
+                  _buildPlaceholderTab(
+                    Icons.notifications_outlined,
+                    'Notifikasi',
+                  ),
+                  const AdminProfileScreen(),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+        bottomNavigationBar: isMobile ? _buildBottomNav() : null,
       ),
-      bottomNavigationBar: isMobile ? _buildBottomNav() : null,
     );
   }
 
@@ -259,7 +345,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   style: const TextStyle(fontWeight: FontWeight.w600)),
               onTap: () {
                 Navigator.pop(context);
-                setState(() => _selectedNav = i);
+                _changeTab(i);
                 if (i == 1) _loadSemuaLaporan();
                 if (i == 0) _loadDashboard();
               },
@@ -310,7 +396,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 )
               else
                 Container(
-                  width: 36, height: 36,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
@@ -331,7 +418,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               if (!isMobile) ...[
                 _buildDesktopNavItem(0, Icons.home_rounded, 'Beranda'),
                 _buildDesktopNavItem(1, Icons.list_alt_rounded, 'Laporan'),
-                _buildDesktopNavItem(2, Icons.notifications_outlined, 'Notifikasi'),
+                _buildDesktopNavItem(
+                    2, Icons.notifications_outlined, 'Notifikasi'),
                 _buildDesktopNavItem(3, Icons.person_outline_rounded, 'Profil'),
                 const SizedBox(width: 16),
               ],
@@ -340,7 +428,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               GestureDetector(
                 onTap: _handleLogout,
                 child: Container(
-                  width: 36, height: 36,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     shape: BoxShape.circle,
@@ -361,7 +450,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final isActive = _selectedNav == index;
     return InkWell(
       onTap: () {
-        setState(() => _selectedNav = index);
+        _changeTab(index);
         if (index == 1) _loadSemuaLaporan();
         if (index == 0) _loadDashboard();
       },
@@ -454,7 +543,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Sesuai desain: "Panel Admin" besar, "Sarana & Prasarana UIN" kecil
                 const Text('Panel Admin',
                     style: TextStyle(
                         fontSize: 22,
@@ -466,8 +554,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 const SizedBox(height: 10),
                 Text('Selamat datang, Admin! 👋',
                     style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.white.withOpacity(0.85))),
+                        fontSize: 13, color: Colors.white.withOpacity(0.85))),
               ],
             ),
           ),
@@ -492,22 +579,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       children: [
         Row(
           children: [
-            _buildStatCard('Menunggu', '$_menunggu',
-                const Color(0xFFE07B00), Icons.hourglass_empty_rounded,
+            _buildStatCard('Menunggu', '$_menunggu', const Color(0xFFE07B00),
+                Icons.hourglass_empty_rounded,
                 showBadge: true),
             const SizedBox(width: 10),
-            _buildStatCard('Diproses', '$_diproses',
-                const Color(0xFF1565C0), Icons.settings_rounded),
+            _buildStatCard('Diproses', '$_diproses', const Color(0xFF1565C0),
+                Icons.settings_rounded),
           ],
         ),
         const SizedBox(height: 10),
         Row(
           children: [
-            _buildStatCard('Selesai', '$_selesai',
-                const Color(0xFF1A6B3A), Icons.check_circle_rounded),
+            _buildStatCard('Selesai', '$_selesai', const Color(0xFF1A6B3A),
+                Icons.check_circle_rounded),
             const SizedBox(width: 10),
-            _buildStatCard('Total', '$_total',
-                const Color(0xFF1565C0), Icons.bar_chart_rounded),
+            _buildStatCard(
+                'Total', '$_total', const Color(0xFF1565C0), Icons.bar_chart_rounded),
           ],
         ),
       ],
@@ -554,8 +641,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       if (showBadge) ...[
                         const SizedBox(width: 4),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 1),
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                           decoration: BoxDecoration(
                             color: const Color(0xFFE07B00),
                             borderRadius: BorderRadius.circular(99),
@@ -597,7 +684,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     color: Color(0xFF111111))),
             const Spacer(),
             GestureDetector(
-              onTap: () => setState(() => _selectedNav = 3),
+              onTap: () => _changeTab(1),
               child: const Text('Lihat Semua',
                   style: TextStyle(
                       fontSize: 13,
@@ -690,8 +777,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           _loadSemuaLaporan(status: s);
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
                             color: _filterStatus == s
                                 ? const Color(0xFF1A5E35)
@@ -708,9 +795,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: _filterStatus == s
-                                  ? Colors.white
-                                  : Colors.black54,
+                              color:
+                                  _filterStatus == s ? Colors.white : Colors.black54,
                             ),
                           ),
                         ),
@@ -759,22 +845,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     Color statusBg;
     if (status == 'menunggu') {
       statusColor = const Color(0xFFE07B00);
-      statusBg    = const Color(0xFFFFF3E0);
+      statusBg = const Color(0xFFFFF3E0);
     } else if (status == 'selesai') {
       statusColor = const Color(0xFF1A6B3A);
-      statusBg    = const Color(0xFFE8F5EE);
+      statusBg = const Color(0xFFE8F5EE);
     } else if (status == 'ditolak') {
       statusColor = const Color(0xFFDC2626);
-      statusBg    = const Color(0xFFFEF2F2);
+      statusBg = const Color(0xFFFEF2F2);
     } else {
       statusColor = const Color(0xFF1565C0);
-      statusBg    = const Color(0xFFE3F2FD);
+      statusBg = const Color(0xFFE3F2FD);
     }
 
-    final statusLabel = status == 'menunggu' ? 'Menunggu'
-        : status == 'selesai'  ? 'Selesai'
-        : status == 'ditolak'  ? 'Ditolak'
-        : 'Diproses';
+    final statusLabel = status == 'menunggu'
+        ? 'Menunggu'
+        : status == 'selesai'
+            ? 'Selesai'
+            : status == 'ditolak'
+                ? 'Ditolak'
+                : 'Diproses';
 
     // Hitung waktu relatif
     final createdAt = DateTime.tryParse(item['created_at'] ?? '') ?? DateTime.now();
@@ -790,193 +879,185 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       waktu = '${diff.inDays} hari yang lalu';
     }
 
-    final namaUser     = item['user']?['nama']     ?? item['user']?['name'] ?? '-';
-    final nimUser      = item['user']?['nim']       ?? '';
-    final namaKategori = item['kategori']?['nama']  ?? item['kategori'] ?? '-';
-
-    // Tentukan apakah laporan ini masih bisa diproses/diselesaikan
-    final bisaProses   = status == 'menunggu';
-    final bisaSelesai  = status == 'menunggu' || status == 'diproses';
+    final namaUser = item['user']?['nama'] ?? item['user']?['name'] ?? '-';
+    final nimUser = item['user']?['nim'] ?? '';
+    final namaKategori = item['kategori']?['nama'] ?? item['kategori'] ?? '-';
 
     return GestureDetector(
-  onTap: () async {
-    final updated = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AdminDetailScreen(laporan: item),
-      ),
-    );
-    if (updated == true) _loadDashboard();
-  },
-  child: Container(
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Baris 1: status badge + waktu
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: statusBg,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(statusLabel,
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: statusColor)),
-                    ),
-                    const Spacer(),
-                    Text(waktu,
-                        style: const TextStyle(
-                            fontSize: 11, color: Colors.black38)),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                // Judul laporan
-                Text(item['judul'] ?? '-',
-                    style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1E293B))),
-                const SizedBox(height: 6),
-
-                // Nama + NIM
-                Row(
-                  children: [
-                    const Icon(Icons.person_outline,
-                        size: 13, color: Color(0xFF94A3B8)),
-                    const SizedBox(width: 4),
-                    Text(
-                      nimUser.isNotEmpty ? '$namaUser • $nimUser' : namaUser,
-                      style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF94A3B8)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-
-                // Kategori + lokasi
-                Row(
-                  children: [
-                    const Icon(Icons.category_outlined,
-                        size: 13, color: Color(0xFF94A3B8)),
-                    const SizedBox(width: 4),
-                    Text(namaKategori,
-                        style: const TextStyle(
-                            fontSize: 12, color: Color(0xFF94A3B8))),
-                    const SizedBox(width: 10),
-                    const Icon(Icons.location_on_outlined,
-                        size: 13, color: Color(0xFF94A3B8)),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(item['lokasi'] ?? '-',
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 12, color: Color(0xFF94A3B8))),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+      onTap: () async {
+        final updated = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AdminDetailScreen(laporan: item),
           ),
-
-          // ── Tombol aksi — sesuai desain: Proses + Selesai berdampingan ──
-          if (status != 'selesai' && status != 'ditolak') ...[
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-              child: status == 'diproses'
-                  // Kalau sudah diproses → hanya 1 tombol "Tandai Selesai"
-                  ? SizedBox(
-                      width: double.infinity,
-                      height: 40,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _konfirmasiUpdate(item, 'selesai'),
-                        icon: const Icon(Icons.check_rounded, size: 16),
-                        label: const Text('Tandai Selesai',
-                            style: TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w600)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1A5E35),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                    )
-                  // Kalau menunggu → 2 tombol: Proses + Selesai
-                  : Row(
-                      children: [
-                        // Tombol Proses (biru outline)
-                        Expanded(
-                          child: SizedBox(
-                            height: 40,
-                            child: OutlinedButton.icon(
-                              onPressed: () => _konfirmasiUpdate(item, 'diproses'),
-                              icon: const Icon(Icons.play_arrow_rounded, size: 16),
-                              label: const Text('Proses',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600)),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFF1565C0),
-                                side: const BorderSide(
-                                    color: Color(0xFF1565C0), width: 1.5),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10)),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Tombol Selesai (hijau solid)
-                        Expanded(
-                          child: SizedBox(
-                            height: 40,
-                            child: ElevatedButton.icon(
-                              onPressed: () => _konfirmasiUpdate(item, 'selesai'),
-                              icon: const Icon(Icons.check_rounded, size: 16),
-                              label: const Text('Selesai',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF1A5E35),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10)),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
+        );
+        if (updated == true) _loadDashboard();
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 2)),
           ],
-        ],
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Baris 1: status badge + waktu
+                  Row(
+                    children: [
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: statusBg,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(statusLabel,
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: statusColor)),
+                      ),
+                      const Spacer(),
+                      Text(waktu,
+                          style: const TextStyle(fontSize: 11, color: Colors.black38)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Judul laporan
+                  Text(item['judul'] ?? '-',
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1E293B))),
+                  const SizedBox(height: 6),
+
+                  // Nama + NIM
+                  Row(
+                    children: [
+                      const Icon(Icons.person_outline,
+                          size: 13, color: Color(0xFF94A3B8)),
+                      const SizedBox(width: 4),
+                      Text(
+                        nimUser.isNotEmpty ? '$namaUser • $nimUser' : namaUser,
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+
+                  // Kategori + lokasi
+                  Row(
+                    children: [
+                      const Icon(Icons.category_outlined,
+                          size: 13, color: Color(0xFF94A3B8)),
+                      const SizedBox(width: 4),
+                      Text(namaKategori,
+                          style:
+                              const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                      const SizedBox(width: 10),
+                      const Icon(Icons.location_on_outlined,
+                          size: 13, color: Color(0xFF94A3B8)),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(item['lokasi'] ?? '-',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 12, color: Color(0xFF94A3B8))),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Tombol aksi — sesuai desain: Proses + Selesai berdampingan ──
+            if (status != 'selesai' && status != 'ditolak') ...[
+              const Divider(height: 1, color: Color(0xFFE2E8F0)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+                child: status == 'diproses'
+                    // Kalau sudah diproses → hanya 1 tombol "Tandai Selesai"
+                    ? SizedBox(
+                        width: double.infinity,
+                        height: 40,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _konfirmasiUpdate(item, 'selesai'),
+                          icon: const Icon(Icons.check_rounded, size: 16),
+                          label: const Text('Tandai Selesai',
+                              style:
+                                  TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1A5E35),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      )
+                    // Kalau menunggu → 2 tombol: Proses + Selesai
+                    : Row(
+                        children: [
+                          // Tombol Proses (biru outline)
+                          Expanded(
+                            child: SizedBox(
+                              height: 40,
+                              child: OutlinedButton.icon(
+                                onPressed: () => _konfirmasiUpdate(item, 'diproses'),
+                                icon: const Icon(Icons.play_arrow_rounded, size: 16),
+                                label: const Text('Proses',
+                                    style: TextStyle(
+                                        fontSize: 13, fontWeight: FontWeight.w600)),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF1565C0),
+                                  side: const BorderSide(
+                                      color: Color(0xFF1565C0), width: 1.5),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10)),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Tombol Selesai (hijau solid)
+                          Expanded(
+                            child: SizedBox(
+                              height: 40,
+                              child: ElevatedButton.icon(
+                                onPressed: () => _konfirmasiUpdate(item, 'selesai'),
+                                icon: const Icon(Icons.check_rounded, size: 16),
+                                label: const Text('Selesai',
+                                    style: TextStyle(
+                                        fontSize: 13, fontWeight: FontWeight.w600)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF1A5E35),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10)),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ],
+          ],
+        ),
       ),
-  ), 
     );
   }
 
@@ -1000,8 +1081,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         color: Colors.grey.shade400)),
                 const SizedBox(height: 6),
                 Text('Segera hadir',
-                    style: TextStyle(
-                        fontSize: 13, color: Colors.grey.shade400)),
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade400)),
               ],
             ),
           ),
@@ -1015,10 +1095,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // ════════════════════════════════════════════════════════
   Widget _buildBottomNav() {
     final items = [
-      _NavItem(icon: Icons.home_rounded,           label: 'Beranda'),
-      _NavItem(icon: Icons.list_alt_rounded,        label: 'Laporan'),
-      _NavItem(icon: Icons.notifications_outlined,  label: 'Notifikasi'),
-      _NavItem(icon: Icons.person_outline_rounded,  label: 'Profil'),
+      _NavItem(icon: Icons.home_rounded, label: 'Beranda'),
+      _NavItem(icon: Icons.list_alt_rounded, label: 'Laporan'),
+      _NavItem(icon: Icons.notifications_outlined, label: 'Notifikasi'),
+      _NavItem(icon: Icons.person_outline_rounded, label: 'Profil'),
     ];
 
     return Container(
@@ -1041,7 +1121,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               return Expanded(
                 child: GestureDetector(
                   onTap: () {
-                    setState(() => _selectedNav = i);
+                    _changeTab(i);
                     if (i == 1) _loadSemuaLaporan();
                     if (i == 0) _loadDashboard();
                   },
@@ -1051,8 +1131,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     children: [
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 250),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 6),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                         decoration: BoxDecoration(
                           color: isActive
                               ? const Color(0xFFE8F5EE)
@@ -1069,9 +1149,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       Text(items[i].label,
                           style: TextStyle(
                             fontSize: 11,
-                            fontWeight: isActive
-                                ? FontWeight.w700
-                                : FontWeight.w400,
+                            fontWeight:
+                                isActive ? FontWeight.w700 : FontWeight.w400,
                             color: isActive
                                 ? const Color(0xFF1A6B3A)
                                 : const Color(0xFF999999),
