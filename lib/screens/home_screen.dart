@@ -17,6 +17,9 @@ import '../widgets/home/welcome_card.dart';
 import '../widgets/home/latest_laporan_section.dart';
 import '../widgets/home/home_bottom_nav.dart';
 import '../widgets/home/home_stats_row.dart';
+import '../widgets/home/home_drawer.dart';
+import '../widgets/home/home_app_bar.dart';
+import '../widgets/common/confirm_dialog.dart';
 
 // ── Home Screen ───────────────────────────────────────────────────────────────
 class HomeScreen extends StatefulWidget {
@@ -56,47 +59,50 @@ void _changeTab(int index) {
   });
 }
 
-void _openLaporanWithFilter(String status) {
-  _changeTab(NavigationTab.laporan);
+  Future<void> _handleLogout({bool closeDrawer = false}) async {
+    if (closeDrawer) {
+      Navigator.pop(context);
+    }
 
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    _laporanScreenKey.currentState?.applyFilterFromDashboard(status);
-  });
-}
+    final confirm = await showConfirmDialog(
+      context: context,
+      title: 'Keluar Akun?',
+      message: 'Apakah Anda yakin ingin keluar dari akun SILAPOR?',
+      confirmText: 'Keluar',
+      isDanger: true,
+    );
 
-//untuk konfirmasi keluar dari aplikasi
-Future<bool> _showExitDialog() async {
-  final result = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) {
-      return AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Text(
-          'Keluar Aplikasi',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: const Text(
-          'Apakah Anda yakin ingin keluar dari SILAPOR?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Keluar'),
-          ),
-        ],
-      );
-    },
-  );
+    if (!confirm) return;
 
-  return result ?? false;
-}
+    await ApiService.logout();
+
+    if (!mounted) return;
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
+  void _openLaporanWithFilter(String status) {
+    _changeTab(NavigationTab.laporan);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _laporanScreenKey.currentState?.applyFilterFromDashboard(status);
+    });
+  }
+
+  //untuk konfirmasi keluar dari aplikasi
+  Future<bool> _showExitDialog() {
+    return showConfirmDialog(
+      context: context,
+      title: 'Keluar Aplikasi',
+      message: 'Apakah Anda yakin ingin keluar dari SILAPOR?',
+      cancelText: 'Batal',
+      confirmText: 'Keluar',
+      isDanger: true,
+    );
+  }
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -295,118 +301,32 @@ Future<bool> _showExitDialog() async {
   }
 
   Widget _buildAppBar(bool isMobile) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0D4A28), Color(0xFF1A6B3A)],
-        ),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            children: [
-              // Jika di Mobile tampilkan Hamburger, jika di Web/Desktop sembunyikan
-              if (isMobile)
-                Builder(
-                  builder: (context) => IconButton(
-                    icon: const Icon(Icons.menu, color: Colors.white, size: 26),
-                    onPressed: () => Scaffold.of(context).openDrawer(),
-                  ),
-                )
-              else
-                const Padding(
-                  padding: EdgeInsets.only(left: 8, right: 16),
-                  child: Icon(Icons.school_rounded, color: Colors.white, size: 28),
-                ),
-
-              const Text(
-                'SILAPOR UIN',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: 0.5),
-              ),
-
-              const Spacer(),
-
-              // Navigasi Horizontal bar atas (HANYA muncul saat di Desktop/Web)
-              if (!isMobile) ...[
-                _buildDesktopNavItem(0, Icons.home_rounded, 'Beranda'),
-                _buildDesktopNavItem(1, Icons.description_outlined, 'Laporan'),
-                _buildDesktopNavItem(2, Icons.notifications_outlined, 'Notifikasi'),
-                _buildDesktopNavItem(3, Icons.person_outline_rounded, 'Profil'),
-                const SizedBox(width: 16),
-              ],
-
-              IconButton(
-                icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 22),
-                onPressed: () async {
-                  await ApiService.logout();
-                  if (mounted) Navigator.of(context).pop();
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
+    return HomeAppBar(
+      isMobile: isMobile,
+      selectedIndex: _selectedNav,
+      onChangeTab: _changeTab,
+      onLogout: _handleLogout,
     );
   }
 
-  // Widget pembantu khusus tombol navigasi atas versi desktop/tablet
-  Widget _buildDesktopNavItem(int index, IconData icon, String label) {
-    final isActive = _selectedNav == index;
-    return InkWell(
-      onTap: () => _changeTab(index),
-      borderRadius: BorderRadius.circular(20),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white.withOpacity(0.15) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: Colors.white, size: 18),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
+  Widget _buildWelcomeCard() {
+    return WelcomeCard(
+      namaUser: _namaUser,
+      nimUser: _nimUser,
+      prodiUser: _prodiUser,
     );
   }
 
-Widget _buildWelcomeCard() {
-  return WelcomeCard(
-    namaUser: _namaUser,
-    nimUser: _nimUser,
-    prodiUser: _prodiUser,
-  );
-}
-
-Widget _buildStatsRow() {
-  return HomeStatsRow(
-    total: _total,
-    menunggu: _menunggu,
-    selesai: _selesai,
-    onTapTotal: () => _openLaporanWithFilter('semua'),
-    onTapMenunggu: () => _openLaporanWithFilter('menunggu'),
-    onTapSelesai: () => _openLaporanWithFilter('selesai'),
-  );
-}
+  Widget _buildStatsRow() {
+    return HomeStatsRow(
+      total: _total,
+      menunggu: _menunggu,
+      selesai: _selesai,
+      onTapTotal: () => _openLaporanWithFilter('semua'),
+      onTapMenunggu: () => _openLaporanWithFilter('menunggu'),
+      onTapSelesai: () => _openLaporanWithFilter('selesai'),
+    );
+  }
 
   Widget _buildBuatLaporanButton() {
     return SizedBox(
@@ -443,137 +363,41 @@ Widget _buildStatsRow() {
     );
   }
 
- Widget _buildLaporanTerbaru() {
-  return LatestLaporanSection(
-    laporanList: _laporanList,
-    onViewAll: () {
-      _changeTab(NavigationTab.laporan);
-    },
-    onTapItem: (item) async {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => DetailLaporanScreen(laporan: item),
-        ),
-      );
+  Widget _buildLaporanTerbaru() {
+    return LatestLaporanSection(
+      laporanList: _laporanList,
+      onViewAll: () {
+        _changeTab(NavigationTab.laporan);
+      },
+      onTapItem: (item) async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetailLaporanScreen(laporan: item),
+          ),
+        );
 
-      if (mounted) {
-        _loadDashboardData();
-      }
-    },
-  );
-}
+        if (mounted) {
+          _loadDashboardData();
+        }
+      },
+    );
+  }
 
-Widget _buildBottomNav() {
-  return HomeBottomNav(
-    selectedIndex: _selectedNav,
-    onTap: _changeTab,
-  );
-}
+  Widget _buildBottomNav() {
+    return HomeBottomNav(
+      selectedIndex: _selectedNav,
+      onTap: _changeTab,
+    );
+  }
 
   Widget _buildDrawer() {
-    return Drawer(
-      child: Column(
-        children: [
-          UserAccountsDrawerHeader(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF0D4A28), Color(0xFF1A6B3A)],
-              ),
-            ),
-            currentAccountPicture: const CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(Icons.person, color: Color(0xFF1A5E35), size: 40),
-            ),
-            accountName: Text(
-              _namaUser,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            accountEmail: Text(
-              'NIM: $_nimUser\n$_prodiUser',
-              style: const TextStyle(fontSize: 12, height: 1.3),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.home_rounded, color: Color(0xFF1A5E35)),
-            title: const Text('Beranda', style: TextStyle(fontWeight: FontWeight.w600)),
-            onTap: () {
-              Navigator.pop(context);
-              _changeTab(NavigationTab.dashboard);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.description_outlined, color: Color(0xFF1A5E35)),
-            title: const Text('Daftar Laporan', style: TextStyle(fontWeight: FontWeight.w600)),
-            onTap: () {
-              Navigator.pop(context);
-              _changeTab(NavigationTab.laporan);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.notifications_outlined, color: Color(0xFF1A5E35)),
-            title: const Text('Notifikasi', style: TextStyle(fontWeight: FontWeight.w600)),
-            onTap: () {
-              Navigator.pop(context);
-              _changeTab(NavigationTab.notifikasi);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.person_outline_rounded, color: Color(0xFF1A5E35)),
-            title: const Text('Profil Saya', style: TextStyle(fontWeight: FontWeight.w600)),
-            onTap: () {
-              Navigator.pop(context);
-              _changeTab(NavigationTab.profil);
-            },
-          ),
-          const Divider(),
-          const Spacer(),
-          ListTile(
-            leading: const Icon(Icons.logout_rounded, color: Colors.red),
-            title: const Text('Keluar Akun', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-            onTap: () async {
-  Navigator.pop(context); // tutup drawer dulu
-
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      title: const Text('Keluar Akun?'),
-      content: const Text(
-        'Apakah Anda yakin ingin keluar dari akun SILAPOR?',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Batal'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('Keluar'),
-        ),
-      ],
-    ),
-  );
-
-  if (confirm != true) return;
-
-  await ApiService.logout();
-
-  if (!mounted) return;
-
-  Navigator.of(context).pushAndRemoveUntil(
-    MaterialPageRoute(builder: (_) => const LoginScreen()),
-    (route) => false,
-  );
-},
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
+    return HomeDrawer(
+      namaUser: _namaUser,
+      nimUser: _nimUser,
+      prodiUser: _prodiUser,
+      onChangeTab: _changeTab,
+      onLogout: () => _handleLogout(closeDrawer: true),
     );
   }
 }
