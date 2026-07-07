@@ -5,18 +5,13 @@ import 'detail_laporan_screen.dart';
 import 'notifikasi_screen.dart'; 
 
 class LaporanScreen extends StatefulWidget {
-  final String? initialFilter;
-
-  const LaporanScreen({
-    super.key,
-    this.initialFilter,
-  });
+  const LaporanScreen({super.key});
 
   @override
-  State<LaporanScreen> createState() => _LaporanScreenState();
+  State<LaporanScreen> createState() => LaporanScreenState();
 }
 
-class _LaporanScreenState extends State<LaporanScreen> {
+class LaporanScreenState extends State<LaporanScreen> {
   bool _isLoading = true;
   List<LaporanModel> _allLaporan = [];
   List<LaporanModel> _filteredLaporan = [];
@@ -59,18 +54,33 @@ class _LaporanScreenState extends State<LaporanScreen> {
     }
   }
 
-  void _applyFilterAndSearch() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      _filteredLaporan = _allLaporan.where((item) {
-        final matchesStatus = _selectedFilter == 'semua' || 
-            item.status.toLowerCase() == _selectedFilter;
-        final matchesSearch = item.judul.toLowerCase().contains(query) || 
-            item.namaKategori.toLowerCase().contains(query);
-        return matchesStatus && matchesSearch;
-      }).toList();
-    });
-  }
+void _applyFilterAndSearch() {
+  final query = _searchController.text.trim().toLowerCase();
+
+  setState(() {
+    _filteredLaporan = _allLaporan.where((item) {
+      final status = item.status.toLowerCase();
+
+      final matchesStatus =
+          _selectedFilter == 'semua' || status == _selectedFilter;
+
+      final matchesSearch = query.isEmpty ||
+          item.judul.toLowerCase().contains(query) ||
+          item.namaKategori.toLowerCase().contains(query) ||
+          item.lokasi.toLowerCase().contains(query);
+
+      return matchesStatus && matchesSearch;
+    }).toList();
+  });
+}
+
+void applyFilterFromDashboard(String status) {
+  setState(() {
+    _selectedFilter = status;
+  });
+
+  _applyFilterAndSearch();
+}
 
   @override
   Widget build(BuildContext context) {
@@ -136,53 +146,61 @@ class _LaporanScreenState extends State<LaporanScreen> {
   }
 
   Widget _buildFilterBadges() {
-    final filters = [
-      {'id': 'semua', 'label': 'Semua'},
-      {'id': 'menunggu', 'label': 'Menunggu'},
-      {'id': 'proses', 'label': 'Proses'},
-      {'id': 'selesai', 'label': 'Selesai'},
-    ];
+  final filters = [
+    {'id': 'semua', 'label': 'Semua'},
+    {'id': 'menunggu', 'label': 'Menunggu'},
+    {'id': 'diproses', 'label': 'Diproses'},
+    {'id': 'selesai', 'label': 'Selesai'},
+    {'id': 'ditolak', 'label': 'Ditolak'},
+  ];
 
-    return Container(
-      height: 48,
-      color: Colors.white,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        itemCount: filters.length,
-        itemBuilder: (context, index) {
-          final f = filters[index];
-          final isSelected = _selectedFilter == f['id'];
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-            child: GestureDetector(
-              onTap: () {
-                setState(() => _selectedFilter = f['id']!);
-                _applyFilterAndSearch();
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF1A6B3A) : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Center(
-                  child: Text(
-                    f['label']!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: isSelected ? Colors.white : const Color(0xFF64748B),
-                    ),
+  return Container(
+    height: 48,
+    color: Colors.white,
+    child: ListView.builder(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      itemCount: filters.length,
+      itemBuilder: (context, index) {
+        final f = filters[index];
+        final isSelected = _selectedFilter == f['id'];
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedFilter = f['id']!;
+              });
+              _applyFilterAndSearch();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? const Color(0xFF1A6B3A)
+                    : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Center(
+                child: Text(
+                  f['label']!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isSelected
+                        ? Colors.white
+                        : const Color(0xFF64748B),
                   ),
                 ),
               ),
             ),
-          );
-        },
-      ),
-    );
-  }
+          ),
+        );
+      },
+    ),
+  );
+}
 
   Widget _buildLaporanItem(LaporanModel item) {
     Color statusColor;

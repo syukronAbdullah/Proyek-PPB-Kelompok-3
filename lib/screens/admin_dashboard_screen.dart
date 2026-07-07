@@ -4,6 +4,7 @@ import 'login_screen.dart';
 import 'admin_detail_screen.dart';
 import 'admin_profile_screen.dart';
 import 'package:flutter/services.dart';
+import '../constants/navigation_tab.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -13,8 +14,8 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  int _selectedNav = 0;
-  final List<int> _tabHistory = [0]; // default ke tab dashboard (index 0)
+  int _selectedNav = NavigationTab.dashboard;
+  final List<int> _tabHistory = [NavigationTab.dashboard];
   bool _isLoading = true;
 
   // Stats
@@ -45,7 +46,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   void _openLaporanWithFilter(String status) {
-    _changeTab(1); // pindah ke tab Laporan dan masuk history
+    _changeTab(NavigationTab.laporan); // pindah ke tab Laporan dan masuk history
 
     setState(() {
       _filterStatus = status;

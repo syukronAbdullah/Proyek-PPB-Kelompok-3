@@ -11,6 +11,7 @@ import 'profile_screen.dart';
 import 'detail_laporan_screen.dart';
 import 'package:flutter/services.dart';
 import 'login_screen.dart';
+import '../constants/navigation_tab.dart';
 
 // ── Home Screen ───────────────────────────────────────────────────────────────
 class HomeScreen extends StatefulWidget {
@@ -22,8 +23,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
-  int _selectedNav = 0;
-  final List<int> _tabHistory = [0];
+  int _selectedNav = NavigationTab.dashboard;
+  final GlobalKey<LaporanScreenState> _laporanScreenKey =
+    GlobalKey<LaporanScreenState>();
+  final List<int> _tabHistory = [NavigationTab.dashboard];
 
   // Fungsi navigasi tab dengan history yang lebih pintar:
   // Jika user kembali ke tab sebelumnya (misalnya balik dari 1 ke 0),
@@ -45,6 +48,14 @@ void _changeTab(int index) {
     }
 
     _selectedNav = index;
+  });
+}
+
+void _openLaporanWithFilter(String status) {
+  _changeTab(NavigationTab.laporan);
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _laporanScreenKey.currentState?.applyFilterFromDashboard(status);
   });
 }
 
@@ -227,7 +238,7 @@ Future<bool> _showExitDialog() async {
                 index: _selectedNav,
                 children: [
                   _buildMainDashboardContent(isMobile),
-                  const LaporanScreen(),
+                  LaporanScreen(key: _laporanScreenKey),
                   const NotifikasiScreen(),
                   const ProfileScreen(),
                 ],
@@ -445,25 +456,28 @@ Future<bool> _showExitDialog() async {
     );
   }
 
-  Widget _buildStatsRow() {
+Widget _buildStatsRow() {
   return Row(
     children: [
       _buildStatCard(
         label: 'Total',
         value: '$_total',
         color: const Color(0xFF111111),
+        onTap: () => _openLaporanWithFilter('semua'),
       ),
       const SizedBox(width: 10),
       _buildStatCard(
         label: 'Menunggu',
         value: '$_menunggu',
         color: const Color(0xFFE07B00),
+        onTap: () => _openLaporanWithFilter('menunggu'),
       ),
       const SizedBox(width: 10),
       _buildStatCard(
         label: 'Selesai',
         value: '$_selesai',
         color: const Color(0xFF1A6B3A),
+        onTap: () => _openLaporanWithFilter('selesai'),
       ),
     ],
   );
@@ -473,41 +487,46 @@ Widget _buildStatCard({
   required String label,
   required String value,
   required Color color,
+  VoidCallback? onTap,
 }) {
   return Expanded(
-    child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.black.withOpacity(0.45),
-              fontWeight: FontWeight.w500,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              color: color,
+          ],
+        ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.black.withOpacity(0.45),
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -562,7 +581,7 @@ Widget _buildStatCard({
             const Spacer(),
             GestureDetector(
               onTap: () {
-                _changeTab(1);
+                _changeTab(NavigationTab.laporan);
               },
               child: const Text('Lihat Semua',
                   style: TextStyle(
@@ -821,7 +840,7 @@ Widget _buildStatCard({
             title: const Text('Beranda', style: TextStyle(fontWeight: FontWeight.w600)),
             onTap: () {
               Navigator.pop(context);
-              _changeTab(0);
+              _changeTab(NavigationTab.dashboard);
             },
           ),
           ListTile(
@@ -829,7 +848,7 @@ Widget _buildStatCard({
             title: const Text('Daftar Laporan', style: TextStyle(fontWeight: FontWeight.w600)),
             onTap: () {
               Navigator.pop(context);
-              _changeTab(1);
+              _changeTab(NavigationTab.laporan);
             },
           ),
           ListTile(
@@ -837,7 +856,7 @@ Widget _buildStatCard({
             title: const Text('Notifikasi', style: TextStyle(fontWeight: FontWeight.w600)),
             onTap: () {
               Navigator.pop(context);
-              _changeTab(2);
+              _changeTab(NavigationTab.notifikasi);
             },
           ),
           ListTile(
@@ -845,7 +864,7 @@ Widget _buildStatCard({
             title: const Text('Profil Saya', style: TextStyle(fontWeight: FontWeight.w600)),
             onTap: () {
               Navigator.pop(context);
-              _changeTab(3);
+              _changeTab(NavigationTab.profil);
             },
           ),
           const Divider(),
