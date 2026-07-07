@@ -47,6 +47,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       return;
     }
 
+    if (_oldPasswordController.text == _newPasswordController.text) {
+      _showSnackBar(
+        'Kata sandi baru tidak boleh sama dengan kata sandi lama!',
+        isError: true,
+      );
+      return;
+    }
+
     if (_newPasswordController.text != _confirmPasswordController.text) {
       _showSnackBar('Konfirmasi kata sandi baru tidak cocok!', isError: true);
       return;

@@ -10,6 +10,7 @@ import 'notifikasi_screen.dart';
 import 'profile_screen.dart';
 import 'detail_laporan_screen.dart';
 import 'package:flutter/services.dart';
+import 'login_screen.dart';
 
 // ── Home Screen ───────────────────────────────────────────────────────────────
 class HomeScreen extends StatefulWidget {
@@ -214,6 +215,7 @@ Future<bool> _showExitDialog() async {
 
         // Drawer hanya dipasang jika di layar hp/mobile
         drawer: isMobile ? _buildDrawer() : null,
+        drawerEnableOpenDragGesture: false,
 
         body: Column(
           children: [
@@ -444,61 +446,72 @@ Future<bool> _showExitDialog() async {
   }
 
   Widget _buildStatsRow() {
-    return Row(
-      children: [
-        _buildStatCard(
-            label: 'Total',
-            value: '$_total',
-            color: const Color(0xFF111111)),
-        const SizedBox(width: 10),
-        _buildStatCard(
-            label: 'Menunggu',
-            value: '$_menunggu',
-            color: const Color(0xFFE07B00)),
-        const SizedBox(width: 10),
-        _buildStatCard(
-            label: 'Selesai',
-            value: '$_selesai',
-            color: const Color(0xFF1A6B3A)),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(
-      {required String label,
-      required String value,
-      required Color color}) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2)),
-          ],
-        ),
-        child: Column(
-          children: [
-            Text(label,
-                style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.black.withOpacity(0.45),
-                    fontWeight: FontWeight.w500)),
-            const SizedBox(height: 6),
-            Text(value,
-                style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    color: color)),
-          ],
-        ),
+  return Row(
+    children: [
+      _buildStatCard(
+        label: 'Total',
+        value: '$_total',
+        color: const Color(0xFF111111),
       ),
-    );
-  }
+      const SizedBox(width: 10),
+      _buildStatCard(
+        label: 'Menunggu',
+        value: '$_menunggu',
+        color: const Color(0xFFE07B00),
+      ),
+      const SizedBox(width: 10),
+      _buildStatCard(
+        label: 'Selesai',
+        value: '$_selesai',
+        color: const Color(0xFF1A6B3A),
+      ),
+    ],
+  );
+}
+
+Widget _buildStatCard({
+  required String label,
+  required String value,
+  required Color color,
+}) {
+  return Expanded(
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.black.withOpacity(0.45),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
   Widget _buildBuatLaporanButton() {
     return SizedBox(
@@ -841,10 +854,42 @@ Future<bool> _showExitDialog() async {
             leading: const Icon(Icons.logout_rounded, color: Colors.red),
             title: const Text('Keluar Akun', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
             onTap: () async {
-              Navigator.pop(context);
-              await ApiService.logout();
-              if (mounted) Navigator.of(context).pop();
-            },
+  Navigator.pop(context); // tutup drawer dulu
+
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      title: const Text('Keluar Akun?'),
+      content: const Text(
+        'Apakah Anda yakin ingin keluar dari akun SILAPOR?',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Keluar'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirm != true) return;
+
+  await ApiService.logout();
+
+  if (!mounted) return;
+
+  Navigator.of(context).pushAndRemoveUntil(
+    MaterialPageRoute(builder: (_) => const LoginScreen()),
+    (route) => false,
+  );
+},
           ),
           const SizedBox(height: 16),
         ],

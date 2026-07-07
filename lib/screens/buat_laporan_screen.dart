@@ -15,9 +15,15 @@ import '../widgets/photo_picker/photo_viewer_dialog.dart';
 import '../services/image_picker_service.dart';
 import '../widgets/report_form/report_form_card.dart';
 import '../widgets/report_form/report_submit_button.dart';
+import '../models/laporan_model.dart';
 
 class BuatLaporanScreen extends StatefulWidget {
-  const BuatLaporanScreen({super.key});
+  final LaporanModel? laporan;
+
+  const BuatLaporanScreen({
+    super.key,
+    this.laporan,
+  });
 
   @override
   State<BuatLaporanScreen> createState() => _BuatLaporanScreenState();

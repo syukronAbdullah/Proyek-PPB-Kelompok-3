@@ -27,22 +27,32 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // ── Navigasi tab terpusat + history stack ──
   void _changeTab(int index) {
-  if (_selectedNav == index) return;
+    if (_selectedNav == index) return;
 
-  setState(() {
-    // Kalau tab sudah pernah ada di history,
-    // hapus semua history setelah tab tersebut.
-    final existingIndex = _tabHistory.indexOf(index);
+    setState(() {
+      // Kalau tab sudah pernah ada di history,
+      // hapus semua history setelah tab tersebut.
+      final existingIndex = _tabHistory.indexOf(index);
 
-    if (existingIndex != -1) {
-      _tabHistory.removeRange(existingIndex + 1, _tabHistory.length);
-    } else {
-      _tabHistory.add(index);
-    }
+      if (existingIndex != -1) {
+        _tabHistory.removeRange(existingIndex + 1, _tabHistory.length);
+      } else {
+        _tabHistory.add(index);
+      }
 
-    _selectedNav = index;
-  });
-}
+      _selectedNav = index;
+    });
+  }
+
+  void _openLaporanWithFilter(String status) {
+    _changeTab(1); // pindah ke tab Laporan dan masuk history
+
+    setState(() {
+      _filterStatus = status;
+    });
+
+    _loadSemuaLaporan(status: status);
+  }
 
   // ── Konfirmasi keluar aplikasi ──
   Future<bool> _showExitDialog() async {
@@ -283,6 +293,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFFF2F4F3),
         drawer: isMobile ? _buildDrawer() : null,
+        drawerEnableOpenDragGesture: false,
         body: Column(
           children: [
             _buildAppBar(isMobile),
@@ -579,92 +590,122 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       children: [
         Row(
           children: [
-            _buildStatCard('Menunggu', '$_menunggu', const Color(0xFFE07B00),
-                Icons.hourglass_empty_rounded,
-                showBadge: true),
+            _buildStatCard(
+              'Menunggu',
+              '$_menunggu',
+              const Color(0xFFE07B00),
+              Icons.hourglass_empty_rounded,
+              showBadge: true,
+              onTap: () => _openLaporanWithFilter('menunggu'),
+            ),
             const SizedBox(width: 10),
-            _buildStatCard('Diproses', '$_diproses', const Color(0xFF1565C0),
-                Icons.settings_rounded),
+            _buildStatCard(
+              'Diproses',
+              '$_diproses',
+              const Color(0xFF1565C0),
+              Icons.settings_rounded,
+              onTap: () => _openLaporanWithFilter('diproses'),
+            ),
           ],
         ),
         const SizedBox(height: 10),
         Row(
           children: [
-            _buildStatCard('Selesai', '$_selesai', const Color(0xFF1A6B3A),
-                Icons.check_circle_rounded),
+            _buildStatCard(
+              'Selesai',
+              '$_selesai',
+              const Color(0xFF1A6B3A),
+              Icons.check_circle_rounded,
+              onTap: () => _openLaporanWithFilter('selesai'),
+            ),
             const SizedBox(width: 10),
             _buildStatCard(
-                'Total', '$_total', const Color(0xFF1565C0), Icons.bar_chart_rounded),
+              'Total',
+              '$_total',
+              const Color(0xFF1565C0),
+              Icons.bar_chart_rounded,
+              onTap: () => _openLaporanWithFilter('semua'),
+            ),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildStatCard(String label, String value, Color color, IconData icon,
-      {bool showBadge = false}) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    Color color,
+    IconData icon, {
+    bool showBadge = false,
+    VoidCallback? onTap,
+  }) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2)),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2)),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 20),
               ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(label,
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.black.withOpacity(0.45),
-                              fontWeight: FontWeight.w500)),
-                      if (showBadge) ...[
-                        const SizedBox(width: 4),
-                        Container(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE07B00),
-                            borderRadius: BorderRadius.circular(99),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(label,
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.black.withOpacity(0.45),
+                                fontWeight: FontWeight.w500)),
+                        if (showBadge) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE07B00),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                            child: const Text('Baru',
+                                style: TextStyle(
+                                    fontSize: 9,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700)),
                           ),
-                          child: const Text('Baru',
-                              style: TextStyle(
-                                  fontSize: 9,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700)),
-                        ),
+                        ],
                       ],
-                    ],
-                  ),
-                  Text(value,
-                      style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: color)),
-                ],
+                    ),
+                    Text(value,
+                        style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: color)),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -777,8 +818,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           _loadSemuaLaporan(status: s);
                         },
                         child: Container(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
                             color: _filterStatus == s
                                 ? const Color(0xFF1A5E35)
@@ -885,14 +926,42 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     return GestureDetector(
       onTap: () async {
-        final updated = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AdminDetailScreen(laporan: item),
-          ),
-        );
-        if (updated == true) _loadDashboard();
-      },
+  Navigator.pop(context); // tutup drawer dulu
+
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      title: const Text('Keluar Akun?'),
+      content: const Text(
+        'Apakah Anda yakin ingin keluar dari akun SILAPOR?',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Keluar'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirm != true) return;
+
+  await ApiService.logout();
+
+  if (!mounted) return;
+
+  Navigator.of(context).pushAndRemoveUntil(
+    MaterialPageRoute(builder: (_) => const LoginScreen()),
+    (route) => false,
+  );
+},
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,

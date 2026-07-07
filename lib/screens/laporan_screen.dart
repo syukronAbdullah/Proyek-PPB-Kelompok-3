@@ -5,7 +5,12 @@ import 'detail_laporan_screen.dart';
 import 'notifikasi_screen.dart'; 
 
 class LaporanScreen extends StatefulWidget {
-  const LaporanScreen({super.key});
+  final String? initialFilter;
+
+  const LaporanScreen({
+    super.key,
+    this.initialFilter,
+  });
 
   @override
   State<LaporanScreen> createState() => _LaporanScreenState();

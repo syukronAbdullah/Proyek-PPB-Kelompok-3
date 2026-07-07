@@ -180,6 +180,26 @@ class ApiService {
   return jsonDecode(response.body);
 }
 
+  // EDIT LAPORAN
+  static Future<Map<String, dynamic>> updateLaporan(
+  int laporanId,
+  Map<String, dynamic> body,
+  ) async {
+    final token = await getToken();
+
+    final response = await http.put(
+      Uri.parse('${ApiConfig.laporan}/$laporanId'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(body),
+    );
+
+    return jsonDecode(response.body);
+  }
+
   // ── DELETE LAPORAN ─────────────────────────────────────────
   static Future<Map<String, dynamic>> hapusLaporan(int id) async {
     final res = await http.delete(

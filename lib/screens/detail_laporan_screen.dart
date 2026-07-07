@@ -175,24 +175,40 @@ if (currentStatus == 'menunggu') {
                     isDone: true,
                     isActive: currentStatus == 'menunggu',
                   ),
-                  _buildTimelineNode(
-                    title: 'Sedang Diproses',
-                    subtitle: 'Tim IT/Sarpras sedang menuju lokasi untuk pengecekan infrastruktur.',
-                    time: currentStatus != 'menunggu' ? laporan.waktu : '',
-                    isDone: currentStatus == 'diproses' || currentStatus == 'selesai',
-                    isActive: currentStatus == 'diproses',
-                    adminNote: laporan.catatanAdmin,
-                  ),
-                  _buildTimelineNode(
-                    title: 'Selesai',
-                    subtitle: currentStatus == 'selesai' 
-                        ? 'Laporan selesai diatasi oleh unit terkait.' 
-                        : 'Status akan diperbarui setelah masalah berhasil diatasi oleh unit terkait.',
-                    time: currentStatus == 'selesai' ? laporan.waktu : 'Belum Selesai',
-                    isDone: currentStatus == 'selesai',
-                    isActive: currentStatus == 'selesai',
-                    isLast: true,
-                  ),
+              if (currentStatus == 'ditolak') ...[
+                _buildTimelineNode(
+                  title: 'Ditolak',
+                  subtitle: laporan.catatanAdmin != null &&
+                          laporan.catatanAdmin!.isNotEmpty
+                      ? laporan.catatanAdmin!
+                      : 'Laporan ditolak oleh admin.',
+                  time: laporan.waktu,
+                  isDone: true,
+                  isActive: true,
+                  isRejected: true,
+                  isLast: true,
+                  adminNote: laporan.catatanAdmin,
+                ),
+              ] else ...[
+                _buildTimelineNode(
+                  title: 'Sedang Diproses',
+                  subtitle: 'Tim IT/Sarpras sedang menuju lokasi untuk pengecekan infrastruktur.',
+                  time: currentStatus != 'menunggu' ? laporan.waktu : '',
+                  isDone: currentStatus == 'diproses' || currentStatus == 'selesai',
+                  isActive: currentStatus == 'diproses',
+                  adminNote: laporan.catatanAdmin,
+                ),
+                _buildTimelineNode(
+                  title: 'Selesai',
+                  subtitle: currentStatus == 'selesai'
+                      ? 'Laporan selesai diatasi oleh unit terkait.'
+                      : 'Status akan diperbarui setelah masalah berhasil diatasi oleh unit terkait.',
+                  time: currentStatus == 'selesai' ? laporan.waktu : 'Belum Selesai',
+                  isDone: currentStatus == 'selesai',
+                  isActive: currentStatus == 'selesai',
+                  isLast: true,
+                ),
+              ],
                   const SizedBox(height: 12),
 
                   // Card Informasi Tambahan Kuning Estetik
@@ -308,9 +324,19 @@ if (currentStatus == 'menunggu') {
     required bool isDone,
     required bool isActive,
     bool isLast = false,
+    bool isRejected = false,
     String? adminNote,
   }) {
-    Color nodeColor = isDone ? (isActive ? const Color(0xFF1565C0) : const Color(0xFF1A6B3A)) : const Color(0xFFCBD5E1);
+    Color nodeColor;
+
+      if (isRejected) {
+        nodeColor = const Color(0xFFDC2626);
+      } else if (isDone) {
+        nodeColor =
+            isActive ? const Color(0xFF1565C0) : const Color(0xFF1A6B3A);
+      } else {
+        nodeColor = const Color(0xFFCBD5E1);
+      }
     
     return IntrinsicHeight(
       child: Row(

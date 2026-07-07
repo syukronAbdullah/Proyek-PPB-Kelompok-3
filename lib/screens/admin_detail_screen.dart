@@ -77,8 +77,20 @@ if (_selectedStatus == 'selesai' || _selectedStatus == 'ditolak') {
 
   if (confirm != true) return;
 }
+    
+          
+    if (_selectedStatus == 'ditolak' &&
+      _catatanController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Catatan penolakan wajib diisi.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
     setState(() => _isLoading = true);
-    try {
+      try {
       final result = await ApiService.updateStatusLaporan(
         _laporan['id'],
         _selectedStatus!,
@@ -505,30 +517,45 @@ if (_selectedStatus == 'selesai' || _selectedStatus == 'ditolak') {
       return '${dt.day} Okt ${dt.year}, ${dt.hour.toString().padLeft(2,'0')}.${dt.minute.toString().padLeft(2,'0')} WIB';
     }
 
-    final steps = [
-      _TimelineStep(
-        label: 'Laporan Diterima',
-        time: _fmt(createdAt),
-        isDone: true,
-        color: const Color(0xFF1A5E35),
-      ),
-      _TimelineStep(
-        label: 'Sedang Diproses',
-        time: status == 'diproses' || status == 'selesai'
-            ? _fmt(updatedAt)
-            : null,
-        isDone: status == 'diproses' || status == 'selesai',
-        color: const Color(0xFF1565C0),
-      ),
-      _TimelineStep(
-        label: 'Selesai',
-        time: status == 'selesai' ? _fmt(updatedAt) : null,
-        isDone: status == 'selesai',
-        color: const Color(0xFF1A5E35),
-      ),
-    ];
+    final steps = status == 'ditolak'
+    ? [
+        _TimelineStep(
+          label: 'Laporan Diterima',
+          time: _fmt(createdAt),
+          isDone: true,
+          color: const Color(0xFF1A5E35),
+        ),
+        _TimelineStep(
+          label: 'Ditolak',
+          time: _fmt(updatedAt),
+          isDone: true,
+          color: const Color(0xFFDC2626),
+        ),
+      ]
+    : [
+        _TimelineStep(
+          label: 'Laporan Diterima',
+          time: _fmt(createdAt),
+          isDone: true,
+          color: const Color(0xFF1A5E35),
+        ),
+        _TimelineStep(
+          label: 'Sedang Diproses',
+          time: status == 'diproses' || status == 'selesai'
+              ? _fmt(updatedAt)
+              : null,
+          isDone: status == 'diproses' || status == 'selesai',
+          color: const Color(0xFF1565C0),
+        ),
+        _TimelineStep(
+          label: 'Selesai',
+          time: status == 'selesai' ? _fmt(updatedAt) : null,
+          isDone: status == 'selesai',
+          color: const Color(0xFF1A5E35),
+        ),
+      ];
 
-    return Column(
+    return Column(  
       children: steps.asMap().entries.map((e) {
         final i    = e.key;
         final step = e.value;
