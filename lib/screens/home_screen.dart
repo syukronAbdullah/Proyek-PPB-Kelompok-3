@@ -12,6 +12,11 @@ import 'detail_laporan_screen.dart';
 import 'package:flutter/services.dart';
 import 'login_screen.dart';
 import '../constants/navigation_tab.dart';
+import '../widgets/common/stat_card.dart';
+import '../widgets/home/welcome_card.dart';
+import '../widgets/home/latest_laporan_section.dart';
+import '../widgets/home/home_bottom_nav.dart';
+import '../widgets/home/home_stats_row.dart';
 
 // ── Home Screen ───────────────────────────────────────────────────────────────
 class HomeScreen extends StatefulWidget {
@@ -384,151 +389,22 @@ Future<bool> _showExitDialog() async {
     );
   }
 
-  Widget _buildWelcomeCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1A5E35), Color(0xFF2E8B57)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-              color: const Color(0xFF1A5E35).withOpacity(0.35),
-              blurRadius: 16,
-              offset: const Offset(0, 5)),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -10,
-            top: -10,
-            child: Opacity(
-              opacity: 0.12,
-              child: const Icon(Icons.school_rounded,
-                  size: 110, color: Colors.white),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
-                    borderRadius: BorderRadius.circular(20)),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Login berhasil',
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500)),
-                    SizedBox(width: 4),
-                    Icon(Icons.check, color: Colors.white, size: 13),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text('Halo, $_namaUser! 👋',
-                  style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      height: 1.2)),
-              const SizedBox(height: 6),
-              Text(
-                'NIM: $_nimUser  •  $_prodiUser',
-                style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withOpacity(0.8)),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-Widget _buildStatsRow() {
-  return Row(
-    children: [
-      _buildStatCard(
-        label: 'Total',
-        value: '$_total',
-        color: const Color(0xFF111111),
-        onTap: () => _openLaporanWithFilter('semua'),
-      ),
-      const SizedBox(width: 10),
-      _buildStatCard(
-        label: 'Menunggu',
-        value: '$_menunggu',
-        color: const Color(0xFFE07B00),
-        onTap: () => _openLaporanWithFilter('menunggu'),
-      ),
-      const SizedBox(width: 10),
-      _buildStatCard(
-        label: 'Selesai',
-        value: '$_selesai',
-        color: const Color(0xFF1A6B3A),
-        onTap: () => _openLaporanWithFilter('selesai'),
-      ),
-    ],
+Widget _buildWelcomeCard() {
+  return WelcomeCard(
+    namaUser: _namaUser,
+    nimUser: _nimUser,
+    prodiUser: _prodiUser,
   );
 }
 
-Widget _buildStatCard({
-  required String label,
-  required String value,
-  required Color color,
-  VoidCallback? onTap,
-}) {
-  return Expanded(
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.black.withOpacity(0.45),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
+Widget _buildStatsRow() {
+  return HomeStatsRow(
+    total: _total,
+    menunggu: _menunggu,
+    selesai: _selesai,
+    onTapTotal: () => _openLaporanWithFilter('semua'),
+    onTapMenunggu: () => _openLaporanWithFilter('menunggu'),
+    onTapSelesai: () => _openLaporanWithFilter('selesai'),
   );
 }
 
@@ -567,248 +443,33 @@ Widget _buildStatCard({
     );
   }
 
-  Widget _buildLaporanTerbaru() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text('Laporan Terbaru',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF111111))),
-            const Spacer(),
-            GestureDetector(
-              onTap: () {
-                _changeTab(NavigationTab.laporan);
-              },
-              child: const Text('Lihat Semua',
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.darkGreen2,
-                      fontWeight: FontWeight.w600)),
-            ),
-          ],
+ Widget _buildLaporanTerbaru() {
+  return LatestLaporanSection(
+    laporanList: _laporanList,
+    onViewAll: () {
+      _changeTab(NavigationTab.laporan);
+    },
+    onTapItem: (item) async {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DetailLaporanScreen(laporan: item),
         ),
-        const SizedBox(height: 12),
-        _laporanList.isEmpty
-            ? Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                      color: const Color(0xFFE2E8F0), width: 1.2),
-                ),
-                child: const Center(
-                  child: Text('Belum ada laporan',
-                      style: TextStyle(
-                          color: Colors.black45, fontSize: 14)),
-                ),
-              )
-            : Column(
-                children: _laporanList.take(3).map((item) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _buildLaporanTile(item),
-                  );
-                }).toList(),
-              ),
-      ],
-    );
-  }
+      );
 
-  Widget _buildLaporanTile(LaporanModel item) {
-    Color statusColor;
-    Color statusBg;
-    final s = item.status.toLowerCase();
+      if (mounted) {
+        _loadDashboardData();
+      }
+    },
+  );
+}
 
-    if (s == 'menunggu') {
-      statusColor = const Color(0xFFE07B00);
-      statusBg = const Color(0xFFFFF3E0);
-    } else if (s == 'selesai') {
-      statusColor = const Color(0xFF1A6B3A);
-      statusBg = const Color(0xFFE8F5EE);
-    } else if (s == 'ditolak') {
-      statusColor = const Color(0xFFDC2626);
-      statusBg = const Color(0xFFFEF2F2);
-    } else {
-      statusColor = const Color(0xFF1565C0);
-      statusBg = const Color(0xFFE3F2FD);
-    }
-
-    final statusLabel = s == 'menunggu'
-        ? 'Menunggu'
-        : s == 'selesai'
-            ? 'Selesai'
-            : s == 'ditolak'
-                ? 'Ditolak'
-                : 'Diproses';
-
-    return GestureDetector(
-      onTap: () async {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => DetailLaporanScreen(laporan: item),
-          ),
-        );
-
-        if (mounted) {
-          _loadDashboardData();
-        }
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border:
-              Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                      color: const Color(0xFFE2E8F0),
-                      borderRadius: BorderRadius.circular(12)),
-                  child: Text(
-                    item.namaKategori.toUpperCase(),
-                    style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF64748B),
-                        letterSpacing: 0.4),
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                      color: statusBg,
-                      borderRadius: BorderRadius.circular(20)),
-                  child: Text(statusLabel,
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: statusColor)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(item.judul,
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1E293B))),
-            const SizedBox(height: 12),
-            const Divider(
-                height: 1,
-                thickness: 0.8,
-                color: Color(0xFFE2E8F0)),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(
-                    s == 'selesai'
-                        ? Icons.calendar_today_outlined
-                        : Icons.access_time_rounded,
-                    size: 14,
-                    color: const Color(0xFF64748B)),
-                const SizedBox(width: 6),
-                Text(item.waktu,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF64748B))),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    final items = [
-      _NavItem(icon: Icons.home_rounded, label: 'Beranda'),
-      _NavItem(icon: Icons.description_outlined, label: 'Laporan'),
-      _NavItem(icon: Icons.notifications_outlined, label: 'Notifikasi'),
-      _NavItem(icon: Icons.person_outline_rounded, label: 'Profil'),
-    ];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 12,
-              offset: const Offset(0, -3)),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: List.generate(items.length, (i) {
-              final isActive = i == _selectedNav;
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => _changeTab(i),
-                  behavior: HitTestBehavior.opaque,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: isActive
-                              ? const Color(0xFFE8F5EE)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Icon(items[i].icon,
-                            size: 24,
-                            color: isActive
-                                ? AppColors.darkGreen2
-                                : const Color(0xFF999999)),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        items[i].label,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: isActive
-                              ? FontWeight.w700
-                              : FontWeight.w400,
-                          color: isActive
-                              ? AppColors.darkGreen2
-                              : const Color(0xFF999999),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
+Widget _buildBottomNav() {
+  return HomeBottomNav(
+    selectedIndex: _selectedNav,
+    onTap: _changeTab,
+  );
+}
 
   Widget _buildDrawer() {
     return Drawer(
@@ -915,10 +576,4 @@ Widget _buildStatCard({
       ),
     );
   }
-}
-
-class _NavItem {
-  final IconData icon;
-  final String label;
-  const _NavItem({required this.icon, required this.label});
 }

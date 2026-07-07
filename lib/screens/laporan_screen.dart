@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import '../models/laporan_model.dart';
 import '../services/api_service.dart';
 import 'detail_laporan_screen.dart'; 
-import 'notifikasi_screen.dart'; 
+import 'notifikasi_screen.dart';
+import '../widgets/laporan/status_badge.dart';
+import '../widgets/laporan/filter_chips.dart';
+import '../widgets/laporan/laporan_card.dart';
 
 class LaporanScreen extends StatefulWidget {
   const LaporanScreen({super.key});
@@ -145,8 +148,8 @@ void applyFilterFromDashboard(String status) {
     );
   }
 
-  Widget _buildFilterBadges() {
-  final filters = [
+Widget _buildFilterBadges() {
+  const filters = [
     {'id': 'semua', 'label': 'Semua'},
     {'id': 'menunggu', 'label': 'Menunggu'},
     {'id': 'diproses', 'label': 'Diproses'},
@@ -154,136 +157,34 @@ void applyFilterFromDashboard(String status) {
     {'id': 'ditolak', 'label': 'Ditolak'},
   ];
 
-  return Container(
-    height: 48,
-    color: Colors.white,
-    child: ListView.builder(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      itemCount: filters.length,
-      itemBuilder: (context, index) {
-        final f = filters[index];
-        final isSelected = _selectedFilter == f['id'];
-
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedFilter = f['id']!;
-              });
-              _applyFilterAndSearch();
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFF1A6B3A)
-                    : const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Center(
-                child: Text(
-                  f['label']!,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: isSelected
-                        ? Colors.white
-                        : const Color(0xFF64748B),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    ),
+  return FilterChips(
+    selectedFilter: _selectedFilter,
+    filters: filters,
+    onChanged: (value) {
+      setState(() {
+        _selectedFilter = value;
+      });
+      _applyFilterAndSearch();
+    },
   );
 }
-
-  Widget _buildLaporanItem(LaporanModel item) {
-    Color statusColor;
-    Color statusBg;
-    final s = item.status.toLowerCase();
-
-    if (s == 'menunggu') {
-      statusColor = const Color(0xFFE07B00);
-      statusBg = const Color(0xFFFFF3E0);
-    } else if (s == 'selesai') {
-      statusColor = const Color(0xFF1A6B3A);
-      statusBg = const Color(0xFFE8F5EE);
-    } else if (s == 'ditolak') {
-      statusColor = const Color(0xFFDC2626);
-      statusBg = const Color(0xFFFEF2F2);
-    } else {
-      statusColor = const Color(0xFF1565C0);
-      statusBg = const Color(0xFFE3F2FD);
-    }
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: Color(0xFFE2E8F0), width: 1),
-      ),
-      child: InkWell(
-        onTap: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => DetailLaporanScreen(laporan: item)),
-          );
-          if (mounted) {
-            _fetchListLaporan();
-          }
-        },
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8)),
-                    child: Text(
-                      item.namaKategori.toUpperCase(),
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(color: statusBg, borderRadius: BorderRadius.circular(20)),
-                    child: Text(
-                      s == 'menunggu' ? 'Menunggu' : s == 'selesai' ? 'Selesai' : s == 'ditolak' ? 'Ditolak' : 'Diproses',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: statusColor),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(item.judul, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
-              const SizedBox(height: 12),
-              const Divider(height: 1, thickness: 0.8, color: Color(0xFFE2E8F0)),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Text(item.waktu, style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                  const Spacer(),
-                  const Text('Detail ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1A6B3A))),
-                  const Icon(Icons.arrow_forward_ios_rounded, size: 10, color: Color(0xFF1A6B3A)),
-                ],
-              ),
-            ],
-          ),
+Widget _buildLaporanItem(LaporanModel item) {
+  return LaporanCard(
+    laporan: item,
+    onTap: () async {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DetailLaporanScreen(laporan: item),
         ),
-      ),
-    );
-  }
+      );
+
+      if (mounted) {
+        _fetchListLaporan();
+      }
+    },
+  );
+}
 
   Widget _buildEmptyState() {
     return SingleChildScrollView(
