@@ -12,6 +12,9 @@ import '../widgets/admin/admin_stats_grid.dart';
 import '../widgets/admin/admin_laporan_tab.dart';
 import '../widgets/admin/admin_laporan_card.dart';
 import '../widgets/admin/admin_app_bar.dart';
+import '../widgets/admin/admin_welcome_card.dart';
+import '../widgets/admin/admin_latest_laporan_section.dart';
+import '../widgets/admin/admin_dashboard_content.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -353,91 +356,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // TAB 0: BERANDA / DASHBOARD
   // ════════════════════════════════════════════════════════
   Widget _buildDashboardTab() {
-    return Column(
-      children: [
-        Expanded(
-          child: _isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1A5E35)),
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadDashboard,
-                  color: const Color(0xFF1A5E35),
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildWelcomeCard(),
-                        const SizedBox(height: 16),
-                        _buildStatsGrid(),
-                        const SizedBox(height: 20),
-                        _buildLaporanTerbaruSection(),
-                      ],
-                    ),
-                  ),
-                ),
-        ),
-      ],
+    return AdminDashboardContent(
+      isLoading: _isLoading,
+      onRefresh: _loadDashboard,
+      welcomeCard: _buildWelcomeCard(),
+      statsGrid: _buildStatsGrid(),
+      latestLaporanSection: _buildLaporanTerbaruSection(),
     );
   }
-
   // ── Welcome Card ─────────────────────────────────────────
   Widget _buildWelcomeCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0D4A28), Color(0xFF1A6B3A)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0D4A28).withOpacity(0.3),
-            blurRadius: 16,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Panel Admin',
-                    style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white)),
-                const SizedBox(height: 4),
-                const Text('Sarana & Prasarana UIN',
-                    style: TextStyle(fontSize: 13, color: Colors.white70)),
-                const SizedBox(height: 10),
-                Text('Selamat datang, Admin! 👋',
-                    style: TextStyle(
-                        fontSize: 13, color: Colors.white.withOpacity(0.85))),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.admin_panel_settings_rounded,
-                color: Colors.white, size: 32),
-          ),
-        ],
-      ),
-    );
+    return const AdminWelcomeCard();
   }
 
   // ── Stats Grid ───────────────────────────────────────────
@@ -456,50 +385,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // ── Laporan Terbaru (di dashboard) ───────────────────────
   Widget _buildLaporanTerbaruSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text('Laporan Terbaru',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF111111))),
-            const Spacer(),
-            GestureDetector(
-              onTap: () => _changeTab(1),
-              child: const Text('Lihat Semua',
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF1A6B3A),
-                      fontWeight: FontWeight.w600)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _laporanList.isEmpty
-            ? Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Center(
-                  child: Text('Belum ada laporan masuk',
-                      style: TextStyle(color: Colors.black45, fontSize: 14)),
-                ),
-              )
-            : Column(
-                children: _laporanList
-                    .take(5)
-                    .map((item) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: _buildLaporanCard(item),
-                        ))
-                    .toList(),
-              ),
-      ],
+    return AdminLatestLaporanSection(
+      laporanList: _laporanList,
+      onViewAll: () {
+        _handleDrawerTabChange(NavigationTab.laporan);
+      },
+      itemBuilder: (item) {
+        return _buildLaporanCard(item as Map<String, dynamic>);
+      },
     );
   }
 
@@ -561,7 +454,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   // ════════════════════════════════════════════════════════
-  // TAB PLACEHOLDER (Notifikasi & Profil)
+  // TAB PLACEHOLDER (Notifikasi)
   // ════════════════════════════════════════════════════════
   Widget _buildPlaceholderTab(IconData icon, String label) {
     return Column(
