@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../models/admin_notification_model.dart';
+import 'admin_notification_model.dart';
 
 class AdminNotificationTab extends StatelessWidget {
   final bool isLoading;

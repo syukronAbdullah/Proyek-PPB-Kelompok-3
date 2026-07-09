@@ -20,8 +20,11 @@ class ApiService {
   // ── Hapus token saat logout ────────────────────────────────
   static Future<void> clearToken() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-    await prefs.remove('user');
+    await prefs.clear();
+  }
+
+  static Future<void> clearSession() async {
+    await clearToken();
   }
 
   // ── Header dengan token ────────────────────────────────────
@@ -41,10 +44,22 @@ class ApiService {
     if (response.body.trim().isEmpty) {
       return {
         'success': response.statusCode >= 200 && response.statusCode < 300,
+        'statusCode': response.statusCode,
       };
     }
 
-    return jsonDecode(response.body);
+    final data = jsonDecode(response.body);
+    if (data is Map<String, dynamic>) {
+      data['statusCode'] = response.statusCode;
+      data['success'] ??= response.statusCode >= 200 && response.statusCode < 300;
+      return data;
+    }
+
+    return {
+      'success': response.statusCode >= 200 && response.statusCode < 300,
+      'statusCode': response.statusCode,
+      'data': data,
+    };
   }
 
   // ── LOGIN ──────────────────────────────────────────────────
@@ -192,21 +207,50 @@ class ApiService {
   // EDIT LAPORAN
   static Future<Map<String, dynamic>> updateLaporan(
     int laporanId,
-    Map<String, dynamic> body,
-  ) async {
+    Map<String, dynamic> body, {
+    List<File> photos = const [],
+  }) async {
     final token = await getToken();
 
-    final response = await http.put(
+    if (photos.isEmpty) {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.laporan}/$laporanId'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      );
+
+      return _decodeJsonResponse(response);
+    }
+
+    final request = http.MultipartRequest(
+      'POST',
       Uri.parse('${ApiConfig.laporan}/$laporanId'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(body),
     );
 
-    return jsonDecode(response.body);
+    request.headers['Accept'] = 'application/json';
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    request.fields['_method'] = 'PUT';
+    body.forEach((key, value) {
+      request.fields[key] = value.toString();
+    });
+
+    for (final photo in photos) {
+      request.files.add(
+        await http.MultipartFile.fromPath('foto[]', photo.path),
+      );
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    return _decodeJsonResponse(response);
   }
 
   // ── DELETE LAPORAN ─────────────────────────────────────────
@@ -215,7 +259,20 @@ class ApiService {
       Uri.parse('${ApiConfig.laporan}/$id'),
       headers: await _headers(),
     );
-    return jsonDecode(res.body);
+    return _decodeJsonResponse(res);
+  }
+
+  static Future<Map<String, dynamic>> deleteLaporan(int id) async {
+    return hapusLaporan(id);
+  }
+
+  static Future<Map<String, dynamic>> deleteAccount(String password) async {
+    final res = await http.delete(
+      Uri.parse(ApiConfig.deleteAccount),
+      headers: await _headers(),
+      body: jsonEncode({'password': password}),
+    );
+    return _decodeJsonResponse(res);
   }
 
   // ── GET NOTIFIKASI ─────────────────────────────────────────

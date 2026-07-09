@@ -1,19 +1,29 @@
 import 'package:flutter/material.dart';
 
 import '../../constants/navigation_tab.dart';
+import '../common/account_detail_popup.dart';
+import '../common/profile_photo_avatar.dart';
 
 class AdminAppBar extends StatelessWidget {
   final bool isMobile;
   final int selectedIndex;
   final ValueChanged<int> onChangeTab;
-  final VoidCallback onLogout;
+  final String namaAdmin;
+  final String emailAdmin;
+  final String roleAdmin;
+  final String unitKerja;
+  final ImageProvider? profileImage;
 
   const AdminAppBar({
     super.key,
     required this.isMobile,
     required this.selectedIndex,
     required this.onChangeTab,
-    required this.onLogout,
+    required this.namaAdmin,
+    required this.emailAdmin,
+    required this.roleAdmin,
+    required this.unitKerja,
+    this.profileImage,
   });
 
   @override
@@ -111,18 +121,32 @@ class AdminAppBar extends StatelessWidget {
               ],
 
               GestureDetector(
-                onTap: onLogout,
+                onTap: () => showAccountDetailPopup(
+                  context: context,
+                  name: namaAdmin,
+                  identity: emailAdmin,
+                  subtitle: unitKerja,
+                  profileImage: profileImage,
+                  role: roleAdmin,
+                  identityLabel: 'Email',
+                  subtitleLabel: 'Unit Kerja',
+                  avatarIcon: Icons.admin_panel_settings_rounded,
+                  identityIcon: Icons.mail_outline_rounded,
+                  subtitleIcon: Icons.apartment_outlined,
+                ),
                 child: Container(
-                  width: 36,
-                  height: 36,
+                  width: 42,
+                  height: 42,
+                  padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.person_rounded,
-                    color: Colors.white,
-                    size: 20,
+                  child: ProfilePhotoAvatar(
+                    image: profileImage,
+                    radius: 19,
+                    fallbackIcon: Icons.admin_panel_settings_rounded,
+                    enablePreview: false,
                   ),
                 ),
               ),

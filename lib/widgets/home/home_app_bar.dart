@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
 
 import '../../constants/navigation_tab.dart';
+import '../common/account_detail_popup.dart';
+import '../common/profile_photo_avatar.dart';
 
 class HomeAppBar extends StatelessWidget {
   final bool isMobile;
   final int selectedIndex;
   final ValueChanged<int> onChangeTab;
-  final VoidCallback onLogout;
+  final String namaUser;
+  final String nimUser;
+  final String prodiUser;
+  final ImageProvider? profileImage;
 
   const HomeAppBar({
     super.key,
     required this.isMobile,
     required this.selectedIndex,
     required this.onChangeTab,
-    required this.onLogout,
+    required this.namaUser,
+    required this.nimUser,
+    required this.prodiUser,
+    this.profileImage,
   });
 
   @override
@@ -103,13 +111,28 @@ class HomeAppBar extends StatelessWidget {
                 const SizedBox(width: 16),
               ],
 
-              IconButton(
-                icon: const Icon(
-                  Icons.logout_rounded,
-                  color: Colors.white,
-                  size: 22,
+              GestureDetector(
+                onTap: () => showAccountDetailPopup(
+                  context: context,
+                  name: namaUser,
+                  identity: nimUser,
+                  subtitle: prodiUser,
+                  profileImage: profileImage,
                 ),
-                onPressed: onLogout,
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: ProfilePhotoAvatar(
+                    image: profileImage,
+                    radius: 19,
+                    enablePreview: false,
+                  ),
+                ),
               ),
             ],
           ),

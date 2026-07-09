@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../services/api_service.dart';
+import '../services/profile_photo_service.dart';
 import '../models/laporan_model.dart';
 import 'buat_laporan_screen.dart';
 import 'laporan_screen.dart';
@@ -41,23 +43,28 @@ class _HomeScreenState extends State<HomeScreen>
   // tidak menambah entry baru, cukup "pop" dari history.
   // Jika user pindah ke tab baru, tambahkan ke history.
 
-void _changeTab(int index) {
-  if (_selectedNav == index) return;
+  void _changeTab(int index) {
+    if (_selectedNav == index) return;
 
-  setState(() {
-    // Kalau tab sudah pernah ada di history,
-    // hapus semua history setelah tab tersebut.
-    final existingIndex = _tabHistory.indexOf(index);
-
-    if (existingIndex != -1) {
-      _tabHistory.removeRange(existingIndex + 1, _tabHistory.length);
-    } else {
-      _tabHistory.add(index);
+    if (_selectedNav == NavigationTab.laporan &&
+        index != NavigationTab.laporan) {
+      _laporanScreenKey.currentState?.resetFilters();
     }
 
-    _selectedNav = index;
-  });
-}
+    setState(() {
+      // Kalau tab sudah pernah ada di history,
+      // hapus semua history setelah tab tersebut.
+      final existingIndex = _tabHistory.indexOf(index);
+
+      if (existingIndex != -1) {
+        _tabHistory.removeRange(existingIndex + 1, _tabHistory.length);
+      } else {
+        _tabHistory.add(index);
+      }
+
+      _selectedNav = index;
+    });
+  }
 
   Future<void> _handleLogout({bool closeDrawer = false}) async {
     if (closeDrawer) {
@@ -112,6 +119,8 @@ void _changeTab(int index) {
   String _namaUser = 'Loading...';
   String _nimUser = '-';
   String _prodiUser = '-';
+  String? _fotoProfil;
+  File? _fotoProfilLokal;
   int _total = 0;
   int _menunggu = 0;
   int _selesai = 0;
@@ -143,9 +152,11 @@ void _changeTab(int index) {
       final userRaw = prefs.getString('user');
       if (userRaw != null) {
         final userObj = jsonDecode(userRaw);
+        await _loadLocalProfilePhoto();
         setState(() {
           _namaUser = userObj['nama'] ?? 'User';
           _nimUser = userObj['nim'] ?? '-';
+          _fotoProfil = userObj['foto'];
           final prodiCache = userObj['prodi'];
           _prodiUser = prodiCache is Map
               ? (prodiCache['nama_prodi'] ?? '-')
@@ -157,9 +168,11 @@ void _changeTab(int index) {
       if (meResult['success'] == true && meResult['user'] != null) {
         final user = meResult['user'];
         prefs.setString('user', jsonEncode(user));
+        await _loadLocalProfilePhoto();
         setState(() {
           _namaUser = user['nama'] ?? _namaUser;
           _nimUser = user['nim'] ?? _nimUser;
+          _fotoProfil = user['foto'] ?? _fotoProfil;
           final prodiData = user['prodi'];
           _prodiUser = prodiData is Map
               ? (prodiData['nama_prodi'] ?? _prodiUser)
@@ -199,6 +212,15 @@ void _changeTab(int index) {
     }
   }
 
+  Future<void> _loadLocalProfilePhoto() async {
+    final photo = await ProfilePhotoService.loadPhoto(
+      ProfilePhotoService.mahasiswaRole,
+    );
+    if (!mounted) return;
+
+    setState(() => _fotoProfilLokal = photo);
+  }
+
   @override
   void dispose() {
     _animController.dispose();
@@ -218,10 +240,17 @@ void _changeTab(int index) {
 
         // Masih ada history → kembali ke tab sebelumnya
         if (_tabHistory.length > 1) {
+          final previousTab = _selectedNav;
+
           setState(() {
             _tabHistory.removeLast();
             _selectedNav = _tabHistory.last;
           });
+
+          if (previousTab == NavigationTab.laporan &&
+              _selectedNav != NavigationTab.laporan) {
+            _laporanScreenKey.currentState?.resetFilters();
+          }
           return;
         }
 
@@ -251,7 +280,7 @@ void _changeTab(int index) {
                   _buildMainDashboardContent(isMobile),
                   LaporanScreen(key: _laporanScreenKey),
                   const NotifikasiScreen(),
-                  const ProfileScreen(),
+                  ProfileScreen(onProfileChanged: _refreshDrawerProfile),
                 ],
               ),
             ),
@@ -305,7 +334,11 @@ void _changeTab(int index) {
       isMobile: isMobile,
       selectedIndex: _selectedNav,
       onChangeTab: _changeTab,
-      onLogout: _handleLogout,
+      namaUser: _namaUser,
+      nimUser: _nimUser,
+      prodiUser: _prodiUser,
+      profileImage:
+          _fotoProfilLokal == null ? null : FileImage(_fotoProfilLokal!),
     );
   }
 
@@ -396,8 +429,33 @@ void _changeTab(int index) {
       namaUser: _namaUser,
       nimUser: _nimUser,
       prodiUser: _prodiUser,
+      fotoProfil: _fotoProfil,
+      localProfileImage:
+          _fotoProfilLokal == null ? null : FileImage(_fotoProfilLokal!),
+      selectedIndex: _selectedNav,
       onChangeTab: _changeTab,
       onLogout: () => _handleLogout(closeDrawer: true),
     );
+  }
+
+  Future<void> _refreshDrawerProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    await _loadLocalProfilePhoto();
+
+    final userRaw = prefs.getString('user');
+    if (userRaw == null || !mounted) return;
+
+    final user = jsonDecode(userRaw);
+    if (user is! Map) return;
+
+    setState(() {
+      _namaUser = user['nama'] ?? _namaUser;
+      _nimUser = user['nim'] ?? _nimUser;
+      _fotoProfil = user['foto'] ?? _fotoProfil;
+      final prodiData = user['prodi'];
+      _prodiUser = prodiData is Map
+          ? (prodiData['nama_prodi'] ?? _prodiUser)
+          : (prodiData ?? _prodiUser);
+    });
   }
 }

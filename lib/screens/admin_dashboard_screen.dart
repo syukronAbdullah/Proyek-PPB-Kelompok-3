@@ -1,6 +1,11 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
-import '../models/admin_notification_model.dart';
+import '../services/profile_photo_service.dart';
+import '../widgets/admin/admin_notification_model.dart';
 import 'login_screen.dart';
 import 'admin_detail_screen.dart';
 import 'admin_profile_screen.dart';
@@ -37,6 +42,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _selesai = 0;
   int _ditolak = 0;
   int _totalUser = 0;
+  String _namaAdmin = 'Admin';
+  String _emailAdmin = '-';
+  String _roleAdmin = 'Admin';
+  String _unitKerja = 'Sarana & Prasarana UIN';
+  String? _fotoProfil;
+  File? _fotoProfilLokal;
 
   void _handleDrawerTabChange(int index) {
     _changeTab(index);
@@ -57,6 +68,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // ── Navigasi tab terpusat + history stack ──
   void _changeTab(int index) {
     if (_selectedNav == index) return;
+
+    if (_selectedNav == NavigationTab.laporan &&
+        index != NavigationTab.laporan) {
+      _resetLaporanFilters();
+    }
 
     setState(() {
       // Kalau tab sudah pernah ada di history,
@@ -83,6 +99,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     });
 
     _loadSemuaLaporan(status: status);
+  }
+
+  void _resetLaporanFilters() {
+    if (_filterStatus == 'semua' && _searchController.text.isEmpty) return;
+
+    setState(() {
+      _filterStatus = 'semua';
+      _searchController.clear();
+    });
   }
 
   // ── Konfirmasi keluar aplikasi ──
@@ -122,6 +147,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
+      await _loadAdminProfileData();
+
       final result = await ApiService.getAdminDashboard();
       if (result['success'] == true) {
         final stats = result['stats'];
@@ -148,6 +175,54 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _loadAdminProfileData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userRaw = prefs.getString('user');
+    if (userRaw != null) {
+      final user = jsonDecode(userRaw);
+      if (user is Map) {
+        await _loadLocalProfilePhoto();
+        _setAdminProfileData(Map<String, dynamic>.from(user));
+      }
+    }
+
+    if (!mounted) return;
+
+    final result = await ApiService.getProfil();
+    if (result['success'] == true && result['user'] != null) {
+      final user = result['user'];
+      if (user is Map) {
+        final userMap = Map<String, dynamic>.from(user);
+        await prefs.setString('user', jsonEncode(userMap));
+        await _loadLocalProfilePhoto();
+        _setAdminProfileData(userMap);
+      }
+    }
+  }
+
+  Future<void> _loadLocalProfilePhoto() async {
+    final photo = await ProfilePhotoService.loadPhoto(
+      ProfilePhotoService.adminRole,
+    );
+    if (!mounted) return;
+
+    setState(() => _fotoProfilLokal = photo);
+  }
+
+  void _setAdminProfileData(Map<String, dynamic> user) {
+    if (!mounted) return;
+
+    setState(() {
+      _namaAdmin = (user['nama'] ?? 'Admin').toString();
+      _emailAdmin = (user['email'] ?? '-').toString();
+      _roleAdmin = (user['role'] ?? 'Admin').toString().toUpperCase();
+      _unitKerja =
+          (user['unit_kerja'] ?? user['unit'] ?? 'Sarana & Prasarana UIN')
+              .toString();
+      _fotoProfil = user['foto']?.toString();
+    });
   }
 
   Future<void> _loadSemuaLaporan({String? status, String? search}) async {
@@ -414,10 +489,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         if (didPop) return;
 
         if (_tabHistory.length > 1) {
+          final previousTab = _selectedNav;
+
           setState(() {
             _tabHistory.removeLast();
             _selectedNav = _tabHistory.last;
           });
+
+          if (previousTab == NavigationTab.laporan &&
+              _selectedNav != NavigationTab.laporan) {
+            _resetLaporanFilters();
+          }
+
+          if (_selectedNav == NavigationTab.laporan) {
+            _loadSemuaLaporan();
+          }
           return;
         }
 
@@ -441,7 +527,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   _buildDashboardTab(),
                   _buildLaporanTab(),
                   _buildNotificationTab(),
-                  const AdminProfileScreen(),
+                  AdminProfileScreen(onProfileChanged: _refreshDrawerProfile),
                 ],
               ),
             ),
@@ -457,6 +543,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // ════════════════════════════════════════════════════════
   Widget _buildDrawer() {
     return AdminDrawer(
+      namaAdmin: _namaAdmin,
+      emailAdmin: _emailAdmin,
+      roleAdmin: _roleAdmin,
+      unitKerja: _unitKerja,
+      fotoProfil: _fotoProfil,
+      localProfileImage:
+          _fotoProfilLokal == null ? null : FileImage(_fotoProfilLokal!),
+      selectedIndex: _selectedNav,
       onChangeTab: _handleDrawerTabChange,
       onLogout: () {
         Navigator.pop(context);
@@ -473,13 +567,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       isMobile: isMobile,
       selectedIndex: _selectedNav,
       onChangeTab: _handleDrawerTabChange,
-      onLogout: _handleLogout,
+      namaAdmin: _namaAdmin,
+      emailAdmin: _emailAdmin,
+      roleAdmin: _roleAdmin,
+      unitKerja: _unitKerja,
+      profileImage:
+          _fotoProfilLokal == null ? null : FileImage(_fotoProfilLokal!),
     );
   }
 
   // ════════════════════════════════════════════════════════
   // TAB 0: BERANDA / DASHBOARD
   // ════════════════════════════════════════════════════════
+  Future<void> _refreshDrawerProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    await _loadLocalProfilePhoto();
+
+    final userRaw = prefs.getString('user');
+    if (userRaw == null || !mounted) return;
+
+    final user = jsonDecode(userRaw);
+    if (user is Map) {
+      _setAdminProfileData(Map<String, dynamic>.from(user));
+    }
+  }
+
   Widget _buildDashboardTab() {
     return AdminDashboardContent(
       isLoading: _isLoading,

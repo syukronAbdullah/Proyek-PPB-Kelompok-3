@@ -1,9 +1,8 @@
 class ApiConfig {
   // static const String baseUrl = 'http://127.0.0.1:8000/api'; // demo di laptop
-  static const String baseUrl =
-      'http://10.35.199.225:8000/api'; // demo di hp, api berubah ubah, cek dulu pakai ipconfig di cmd, cari IPv4 Address
+  static const String baseUrl = 'http://10.35.199.225:8000/api'; // demo di hp, api berubah ubah, cek dulu pakai ipconfig di cmd, cari IPv4 Address
 
-  // jalankan php artisan serve --host=0.0.0.0 --port=8000 di Laravel untuk mobile
+  // jalankan php artisan serve --host=0.0.0.0 di Laravel untuk mobile
   // printah diatas untuk bisa mengakses server laravel dari port manapun
 
   // Auth
@@ -26,13 +25,13 @@ class ApiConfig {
   // Profil
   static const String profil = '$baseUrl/profil';
   static const String updateProfil = '$baseUrl/profil/update';
+  static const String deleteAccount = '$baseUrl/account';
 
   // Admin
   static const String adminDashboard = '$baseUrl/admin/dashboard';
   static const String adminLaporan = '$baseUrl/admin/laporan';
   static const String adminNotifikasi = '$baseUrl/admin/notifikasi';
-  static const String adminBacaSemuaNotifikasi =
-      '$baseUrl/admin/notifikasi/baca-semua';
+  static const String adminBacaSemuaNotifikasi = '$baseUrl/admin/notifikasi/baca-semua';
 
   // Ganti Password
   //static const String gantiPassword = '$baseUrl/ganti-password';
