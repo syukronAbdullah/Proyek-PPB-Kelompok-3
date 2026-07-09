@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class ReportSubmitButton extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onPressed;
+  final String label;
 
   const ReportSubmitButton({
     super.key,
     required this.isLoading,
     required this.onPressed,
+    this.label = 'Kirim Laporan',
   });
 
   @override
@@ -35,17 +37,17 @@ class ReportSubmitButton extends StatelessWidget {
                   strokeWidth: 2,
                 ),
               )
-            : const Row(
+            : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.check_circle_outline,
                     size: 18,
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Text(
-                    'Kirim Laporan',
-                    style: TextStyle(
+                    label,
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
                     ),

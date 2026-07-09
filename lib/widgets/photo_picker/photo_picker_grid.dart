@@ -9,6 +9,7 @@ class PhotoPickerGrid extends StatelessWidget {
   final List<PhotoItem> photos;
   final int maxPhotos;
   final bool readOnly;
+  final bool showAddPhoto;
   final VoidCallback? onAddPhoto;
   final ValueChanged<PhotoItem>? onRemovePhoto;
   final ValueChanged<PhotoItem>? onTapPhoto;
@@ -18,6 +19,7 @@ class PhotoPickerGrid extends StatelessWidget {
     required this.photos,
     this.maxPhotos = AppConfig.maxReportPhotos,
     this.readOnly = false,
+    this.showAddPhoto = true,
     this.onAddPhoto,
     this.onRemovePhoto,
     this.onTapPhoto,
@@ -50,7 +52,8 @@ class PhotoPickerGrid extends StatelessWidget {
           ),
         ),
 
-                if (!readOnly &&
+        if (!readOnly &&
+            showAddPhoto &&
             photos.length < maxPhotos &&
             onAddPhoto != null)
           AddPhotoCard(
