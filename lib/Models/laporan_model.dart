@@ -40,18 +40,21 @@ class LaporanModel {
 
   // getter ui foto
   List<String> get fotoUrls {
-  return foto.map((item) {
-    if (item is String) {
-      return item;
-    }
+    return foto
+        .map((item) {
+          if (item is String) {
+            return item;
+          }
 
-    if (item is Map && item['url_foto'] != null) {
-      return item['url_foto'].toString();
-    }
+          if (item is Map && item['url_foto'] != null) {
+            return item['url_foto'].toString();
+          }
 
-    return '';
-  }).where((url) => url.isNotEmpty).toList();
-}
+          return '';
+        })
+        .where((url) => url.isNotEmpty)
+        .toList();
+  }
 
   factory LaporanModel.fromJson(Map<String, dynamic> json) {
     debugPrint('RAW FOTO FIELD: ${json['foto']}');
@@ -60,9 +63,9 @@ class LaporanModel {
     final kategoriObj = json['kategori'] as Map<String, dynamic>?;
 
     return LaporanModel(
-      id: json['id'] ?? 0,
-      userId: json['user_id'] ?? 0,
-      kategoriId: json['kategori_id'] ?? 0,
+      id: int.tryParse((json['id'] ?? 0).toString()) ?? 0,
+      userId: int.tryParse((json['user_id'] ?? 0).toString()) ?? 0,
+      kategoriId: int.tryParse((json['kategori_id'] ?? 0).toString()) ?? 0,
       judul: json['judul'] ?? '',
       deskripsi: json['deskripsi'] ?? '',
       lokasi: json['lokasi'] ?? '',
@@ -71,7 +74,7 @@ class LaporanModel {
       createdAt: json['created_at'] ?? '',
       // Ekstrak string "nama" dari objek kategori
       namaKategori: kategoriObj != null ? (kategoriObj['nama'] ?? '') : '',
-      foto: json['foto'] ?? [],
+      foto: json['foto'] ?? json['fotos'] ?? [],
     );
   }
 }

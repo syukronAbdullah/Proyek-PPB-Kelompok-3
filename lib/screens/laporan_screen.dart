@@ -85,6 +85,17 @@ class LaporanScreenState extends State<LaporanScreen> {
     _applyFilterAndSearch();
   }
 
+  void resetFilters() {
+    if (_selectedFilter == 'semua' && _searchController.text.isEmpty) return;
+
+    setState(() {
+      _selectedFilter = 'semua';
+      _searchController.clear();
+    });
+
+    _applyFilterAndSearch();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(

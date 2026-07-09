@@ -13,49 +13,22 @@ class AdminDetailPhotoSection extends StatelessWidget {
       return const _EmptyPhotoSection();
     }
 
-    final visiblePhotos = photos.take(4).toList();
-    final remainingPhotos = photos.length - 4;
-
     return SizedBox(
-      height: 200,
-      child: Row(
-        children: [
-          Expanded(
-            child: visiblePhotos.length == 1
-                ? _PhotoBox(photo: visiblePhotos[0])
-                : Column(
-                    children: [
-                      Expanded(child: _PhotoBox(photo: visiblePhotos[0])),
-                      const SizedBox(height: 2),
-                      if (visiblePhotos.length > 2)
-                        Expanded(child: _PhotoBox(photo: visiblePhotos[2])),
-                    ],
-                  ),
-          ),
-          if (visiblePhotos.length > 1) ...[
-            const SizedBox(width: 2),
-            Expanded(
-              child: Column(
-                children: [
-                  Expanded(child: _PhotoBox(photo: visiblePhotos[1])),
-                  if (visiblePhotos.length > 3) ...[
-                    const SizedBox(height: 2),
-                    Expanded(
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          _PhotoBox(photo: visiblePhotos[3]),
-                          if (remainingPhotos > 0)
-                            _RemainingPhotoOverlay(count: remainingPhotos),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+      height: 160,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: photos.length,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: _PhotoBox(photo: photos[index]),
             ),
-          ],
-        ],
+          );
+        },
       ),
     );
   }
@@ -67,23 +40,17 @@ class _EmptyPhotoSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 180,
-      color: const Color(0xFFE2E8F0),
+      height: 160,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE2E8F0),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.image_not_supported_outlined,
-              size: 40,
-              color: Colors.grey,
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Tidak ada foto',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
-            ),
-          ],
+        child: Icon(
+          Icons.image_outlined,
+          size: 40,
+          color: Colors.grey,
         ),
       ),
     );
@@ -111,8 +78,8 @@ class _PhotoBox extends StatelessWidget {
       child: Image.network(
         imageUrl,
         fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
+        width: 160,
+        height: 160,
         errorBuilder: (_, error, __) {
           return const _BrokenPhoto();
         },
@@ -173,35 +140,13 @@ class _PhotoPreviewDialog extends StatelessWidget {
   }
 }
 
-class _RemainingPhotoOverlay extends StatelessWidget {
-  final int count;
-
-  const _RemainingPhotoOverlay({required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black.withValues(alpha: 0.5),
-      child: Center(
-        child: Text(
-          '+$count Foto',
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: 14,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _BrokenPhoto extends StatelessWidget {
   const _BrokenPhoto();
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: 160,
       color: const Color(0xFFE2E8F0),
       child: const Icon(
         Icons.broken_image_outlined,
@@ -218,6 +163,7 @@ class _LoadingPhoto extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: 160,
       color: const Color(0xFFE2E8F0),
       child: const Center(
         child: CircularProgressIndicator(
