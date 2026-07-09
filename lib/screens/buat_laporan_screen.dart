@@ -1,4 +1,4 @@
-import 'dart:io'; // 1. Perbaikan: Tambahkan import dart:io
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
@@ -8,22 +8,21 @@ import '../models/photo_item.dart';
 import '../config/app_config.dart';
 import '../models/results/duplicate_check_result.dart';
 import '../models/results/photo_selection_result.dart';
-import '../widgets/photo_picker/add_photo_card.dart';
-import '../widgets/photo_picker/photo_tile.dart';
-import '../widgets/photo_picker/photo_picker_grid.dart';
 import '../widgets/photo_picker/photo_viewer_dialog.dart';
 import '../services/image_picker_service.dart';
-import '../widgets/report_form/report_form_card.dart';
-import '../widgets/report_form/report_submit_button.dart';
 import '../models/laporan_model.dart';
+import '../widgets/laporan_form/laporan_category_dropdown.dart';
+import '../widgets/laporan_form/laporan_description_field.dart';
+import '../widgets/laporan_form/laporan_form_header.dart';
+import '../widgets/laporan_form/laporan_location_field.dart';
+import '../widgets/laporan_form/laporan_photo_picker_section.dart';
+import '../widgets/laporan_form/laporan_submit_button.dart';
+import '../widgets/laporan_form/laporan_title_field.dart';
 
 class BuatLaporanScreen extends StatefulWidget {
   final LaporanModel? laporan;
 
-  const BuatLaporanScreen({
-    super.key,
-    this.laporan,
-  });
+  const BuatLaporanScreen({super.key, this.laporan});
 
   @override
   State<BuatLaporanScreen> createState() => _BuatLaporanScreenState();
@@ -32,7 +31,7 @@ class BuatLaporanScreen extends StatefulWidget {
 class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
   final List<PhotoItem> _photos = [];
   final _formKey = GlobalKey<FormState>();
-  
+
   final TextEditingController _judulController = TextEditingController();
   final TextEditingController _lokasiController = TextEditingController();
   final TextEditingController _deskripsiController = TextEditingController();
@@ -54,15 +53,17 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
       if (response['success'] == true) {
         final List<dynamic> data = response['kategori'] ?? [];
         setState(() {
-          _kategoriList = data.map((json) => KategoriModel.fromJson(json)).toList();
+          _kategoriList = data
+              .map((json) => KategoriModel.fromJson(json))
+              .toList();
           _isLoadingKategori = false;
         });
       }
     } catch (e) {
       setState(() => _isLoadingKategori = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal mengambil kategori: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal mengambil kategori: $e')));
     }
   }
 
@@ -70,7 +71,9 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedKategoriId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Silakan pilih kategori fasilitas terlebih dahulu!')),
+        const SnackBar(
+          content: Text('Silakan pilih kategori fasilitas terlebih dahulu!'),
+        ),
       );
       return;
     }
@@ -87,9 +90,9 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
 
     try {
       final response = await ApiService.buatLaporan(
-          bodyData,
-          _photos.map((photo) => photo.file).toList(),
-        );
+        bodyData,
+        _photos.map((photo) => photo.file).toList(),
+      );
       if (response['success'] == true) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -100,15 +103,19 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal: ${response['message'] ?? 'Terjadi kesalahan'}')),
+            SnackBar(
+              content: Text(
+                'Gagal: ${response['message'] ?? 'Terjadi kesalahan'}',
+              ),
+            ),
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error koneksi: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error koneksi: $e')));
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -125,21 +132,21 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
 
   // GPT Project: Fungsi penampung pencarian/pemilihan gambar
   Future<void> _pickImages() async {
-  final files = await ImagePickerService.pickMultipleImages();
+    final files = await ImagePickerService.pickMultipleImages();
 
-  if (files.isEmpty) return;
+    if (files.isEmpty) return;
 
-  final duplicateResult = _removeDuplicatePhotos(files);
-  final selectionResult = _addPhotos(duplicateResult.files);
+    final duplicateResult = _removeDuplicatePhotos(files);
+    final selectionResult = _addPhotos(duplicateResult.files);
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  _showPhotoSelectionSummary(
-    added: selectionResult.addedCount,
-    duplicate: duplicateResult.duplicateCount,
-    overLimit: selectionResult.overLimitCount,
-  );
-}
+    _showPhotoSelectionSummary(
+      added: selectionResult.addedCount,
+      duplicate: duplicateResult.duplicateCount,
+      overLimit: selectionResult.overLimitCount,
+    );
+  }
 
   DuplicateCheckResult _removeDuplicatePhotos(List<File> files) {
     final existingPaths = _photos.map((photo) => photo.file.path).toSet();
@@ -169,18 +176,13 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
     final remainingSlots = _remainingPhotoSlots();
 
     if (remainingSlots <= 0) {
-      return PhotoSelectionResult(
-        addedCount: 0,
-        overLimitCount: files.length,
-      );
+      return PhotoSelectionResult(addedCount: 0, overLimitCount: files.length);
     }
 
     final filesToAdd = files.take(remainingSlots).toList();
 
     setState(() {
-      _photos.addAll(
-        filesToAdd.map((file) => PhotoItem(file: file)),
-      );
+      _photos.addAll(filesToAdd.map((file) => PhotoItem(file: file)));
     });
 
     return PhotoSelectionResult(
@@ -197,14 +199,18 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
     final messages = <String>[];
 
     if (added > 0) messages.add("✅ $added foto berhasil ditambahkan.");
-    if (duplicate > 0) messages.add("⚠️ $duplicate foto diabaikan karena sudah pernah dipilih.");
-    if (overLimit > 0) messages.add("⚠️ $overLimit foto tidak ditambahkan karena batas maksimal ${AppConfig.maxReportPhotos} foto.");
+    if (duplicate > 0)
+      messages.add("⚠️ $duplicate foto diabaikan karena sudah pernah dipilih.");
+    if (overLimit > 0)
+      messages.add(
+        "⚠️ $overLimit foto tidak ditambahkan karena batas maksimal ${AppConfig.maxReportPhotos} foto.",
+      );
 
     if (messages.isEmpty) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(messages.join("\n"))),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(messages.join("\n"))));
   }
 
   @override
@@ -214,28 +220,16 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
         constraints: const BoxConstraints(maxWidth: 800),
         child: Scaffold(
           backgroundColor: Colors.white,
-          appBar: AppBar(
-            backgroundColor: AppColors.primary,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            title: const Text(
-              'Buat Laporan',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.help_outline_rounded, color: Colors.white),
-                onPressed: () {},
-              ),
-            ],
+          appBar: LaporanFormHeader(
+            onBack: () => Navigator.of(context).pop(),
+            onHelp: () {},
           ),
           body: _isLoadingKategori
               ? const Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.primary,
+                    ),
                   ),
                 )
               : SingleChildScrollView(
@@ -245,32 +239,25 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ReportFormCard(
-                          judulController: _judulController,
-                          lokasiController: _lokasiController,
-                          deskripsiController: _deskripsiController,
+                        LaporanTitleField(controller: _judulController),
+                        const SizedBox(height: 16),
+                        LaporanCategoryDropdown(
                           kategoriList: _kategoriList,
                           selectedKategoriId: _selectedKategoriId,
-                          onKategoriChanged: (value) {
+                          onChanged: (value) {
                             setState(() {
                               _selectedKategoriId = value;
                             });
                           },
                         ),
-
                         const SizedBox(height: 16),
-
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween, 
-                          children: [
-                            const Text('Foto Kerusakan', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                            Text('Maks. 4 foto', style: TextStyle(fontSize: 11, color: Colors.black.withOpacity(0.4))),
-                          ],
+                        LaporanLocationField(controller: _lokasiController),
+                        const SizedBox(height: 16),
+                        LaporanDescriptionField(
+                          controller: _deskripsiController,
                         ),
-                        const SizedBox(height: 10),
-                        
-                        // Pemanggilan widget grid pembungkus foto yang reusable
-                        PhotoPickerGrid(
+                        const SizedBox(height: 22),
+                        LaporanPhotoPickerSection(
                           photos: _photos,
                           onAddPhoto: _pickImages,
                           onRemovePhoto: (photo) {
@@ -281,8 +268,7 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
                           onTapPhoto: _previewPhoto,
                         ),
                         const SizedBox(height: 32),
-
-                        ReportSubmitButton(
+                        LaporanSubmitButton(
                           isLoading: _isSubmitting,
                           onPressed: _submitLaporan,
                         ),
@@ -300,9 +286,7 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
     showDialog(
       context: context,
       builder: (_) {
-        return PhotoViewerDialog(
-          photo: photo,
-        );
+        return PhotoViewerDialog(photo: photo);
       },
     );
   }

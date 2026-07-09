@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
 import '../../models/photo_item.dart';
@@ -23,17 +21,16 @@ class PhotoTile extends StatelessWidget {
     return Stack(
       children: [
         GestureDetector(
-        onTap: onTap,
-        child: 
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.file(
-            photo.file,
-            width: double.infinity,
-            height: double.infinity,
-            fit: BoxFit.cover,
+          onTap: onTap,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.file(
+              photo.file,
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.cover,
+            ),
           ),
-         ),
         ),
         // Perbaikan di sini: Kurung kurawal dihapus
         if (showRemoveButton)
@@ -48,11 +45,7 @@ class PhotoTile extends StatelessWidget {
                   color: Colors.black54,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.close,
-                  size: 16,
-                  color: Colors.white,
-                ),
+                child: const Icon(Icons.close, size: 16, color: Colors.white),
               ),
             ),
           ),

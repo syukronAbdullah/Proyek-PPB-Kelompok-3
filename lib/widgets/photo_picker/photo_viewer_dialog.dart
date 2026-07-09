@@ -1,15 +1,10 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import '../../models/photo_item.dart';
 
 class PhotoViewerDialog extends StatelessWidget {
   final PhotoItem photo;
 
-  const PhotoViewerDialog({
-    super.key,
-    required this.photo,
-  });
+  const PhotoViewerDialog({super.key, required this.photo});
 
   @override
   Widget build(BuildContext context) {
@@ -18,14 +13,10 @@ class PhotoViewerDialog extends StatelessWidget {
       insetPadding: const EdgeInsets.all(16),
       child: Stack(
         children: [
-
           InteractiveViewer(
             minScale: 1,
             maxScale: 4,
-            child: Image.file(
-              photo.file,
-              fit: BoxFit.contain,
-            ),
+            child: Image.file(photo.file, fit: BoxFit.contain),
           ),
 
           Positioned(
@@ -35,10 +26,7 @@ class PhotoViewerDialog extends StatelessWidget {
               onPressed: () {
                 Navigator.pop(context);
               },
-              icon: const Icon(
-                Icons.close,
-                color: Colors.white,
-              ),
+              icon: const Icon(Icons.close, color: Colors.white),
             ),
           ),
         ],

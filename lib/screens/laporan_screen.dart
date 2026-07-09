@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/laporan_model.dart';
 import '../services/api_service.dart';
-import 'detail_laporan_screen.dart'; 
-import 'notifikasi_screen.dart';
-import '../widgets/laporan/status_badge.dart';
+import '../theme/app_colors.dart';
+import 'detail_laporan_screen.dart';
 import '../widgets/laporan/filter_chips.dart';
 import '../widgets/laporan/laporan_card.dart';
 
@@ -32,7 +31,7 @@ class LaporanScreenState extends State<LaporanScreen> {
     setState(() => _isLoading = true);
     try {
       final response = await ApiService.getLaporan();
-      if (response != null && response['success'] == true) {
+      if (response['success'] == true) {
         final List<dynamic> listRaw = response['laporan'] ?? [];
         final List<LaporanModel> temp = [];
         for (var item in listRaw) {
@@ -57,39 +56,40 @@ class LaporanScreenState extends State<LaporanScreen> {
     }
   }
 
-void _applyFilterAndSearch() {
-  final query = _searchController.text.trim().toLowerCase();
+  void _applyFilterAndSearch() {
+    final query = _searchController.text.trim().toLowerCase();
 
-  setState(() {
-    _filteredLaporan = _allLaporan.where((item) {
-      final status = item.status.toLowerCase();
+    setState(() {
+      _filteredLaporan = _allLaporan.where((item) {
+        final status = item.status.toLowerCase();
 
-      final matchesStatus =
-          _selectedFilter == 'semua' || status == _selectedFilter;
+        final matchesStatus =
+            _selectedFilter == 'semua' || status == _selectedFilter;
 
-      final matchesSearch = query.isEmpty ||
-          item.judul.toLowerCase().contains(query) ||
-          item.namaKategori.toLowerCase().contains(query) ||
-          item.lokasi.toLowerCase().contains(query);
+        final matchesSearch =
+            query.isEmpty ||
+            item.judul.toLowerCase().contains(query) ||
+            item.namaKategori.toLowerCase().contains(query) ||
+            item.lokasi.toLowerCase().contains(query);
 
-      return matchesStatus && matchesSearch;
-    }).toList();
-  });
-}
+        return matchesStatus && matchesSearch;
+      }).toList();
+    });
+  }
 
-void applyFilterFromDashboard(String status) {
-  setState(() {
-    _selectedFilter = status;
-  });
+  void applyFilterFromDashboard(String status) {
+    setState(() {
+      _selectedFilter = status;
+    });
 
-  _applyFilterAndSearch();
-}
+    _applyFilterAndSearch();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      color: const Color(0xFFF8FAFC),
+      color: AppColors.pageBackground,
       child: Column(
         children: [
           _buildSectionTitle(),
@@ -97,18 +97,28 @@ void applyFilterFromDashboard(String status) {
           _buildFilterBadges(),
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1A5E35))))
-                : _filteredLaporan.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
-                        onRefresh: _fetchListLaporan,
-                        color: const Color(0xFF1A5E35),
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          itemCount: _filteredLaporan.length,
-                          itemBuilder: (context, index) => _buildLaporanItem(_filteredLaporan[index]),
-                        ),
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.primaryAction,
                       ),
+                    ),
+                  )
+                : _filteredLaporan.isEmpty
+                ? _buildEmptyState()
+                : RefreshIndicator(
+                    onRefresh: _fetchListLaporan,
+                    color: AppColors.primaryAction,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      itemCount: _filteredLaporan.length,
+                      itemBuilder: (context, index) =>
+                          _buildLaporanItem(_filteredLaporan[index]),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -122,7 +132,11 @@ void applyFilterFromDashboard(String status) {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: const Text(
         'Riwayat Pengaduan',
-        style: TextStyle(color: Color(0xFF1E293B), fontSize: 20, fontWeight: FontWeight.w800),
+        style: TextStyle(
+          color: AppColors.slateTextPrimary,
+          fontSize: 20,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -132,14 +146,21 @@ void applyFilterFromDashboard(String status) {
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Container(
-        decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(
+          color: AppColors.mutedBackground,
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: TextField(
           controller: _searchController,
           onChanged: (_) => _applyFilterAndSearch(),
           decoration: const InputDecoration(
             hintText: 'Cari judul pengaduan atau kategori...',
-            hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-            prefixIcon: Icon(Icons.search_rounded, color: Color(0xFF64748B), size: 20),
+            hintStyle: TextStyle(color: AppColors.slateTextMuted, fontSize: 13),
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              color: AppColors.slateTextSecondary,
+              size: 20,
+            ),
             border: InputBorder.none,
             contentPadding: EdgeInsets.symmetric(vertical: 12),
           ),
@@ -148,43 +169,44 @@ void applyFilterFromDashboard(String status) {
     );
   }
 
-Widget _buildFilterBadges() {
-  const filters = [
-    {'id': 'semua', 'label': 'Semua'},
-    {'id': 'menunggu', 'label': 'Menunggu'},
-    {'id': 'diproses', 'label': 'Diproses'},
-    {'id': 'selesai', 'label': 'Selesai'},
-    {'id': 'ditolak', 'label': 'Ditolak'},
-  ];
+  Widget _buildFilterBadges() {
+    const filters = [
+      {'id': 'semua', 'label': 'Semua'},
+      {'id': 'menunggu', 'label': 'Menunggu'},
+      {'id': 'diproses', 'label': 'Diproses'},
+      {'id': 'selesai', 'label': 'Selesai'},
+      {'id': 'ditolak', 'label': 'Ditolak'},
+    ];
 
-  return FilterChips(
-    selectedFilter: _selectedFilter,
-    filters: filters,
-    onChanged: (value) {
-      setState(() {
-        _selectedFilter = value;
-      });
-      _applyFilterAndSearch();
-    },
-  );
-}
-Widget _buildLaporanItem(LaporanModel item) {
-  return LaporanCard(
-    laporan: item,
-    onTap: () async {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DetailLaporanScreen(laporan: item),
-        ),
-      );
+    return FilterChips(
+      selectedFilter: _selectedFilter,
+      filters: filters,
+      onChanged: (value) {
+        setState(() {
+          _selectedFilter = value;
+        });
+        _applyFilterAndSearch();
+      },
+    );
+  }
 
-      if (mounted) {
-        _fetchListLaporan();
-      }
-    },
-  );
-}
+  Widget _buildLaporanItem(LaporanModel item) {
+    return LaporanCard(
+      laporan: item,
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailLaporanScreen(laporan: item),
+          ),
+        );
+
+        if (mounted) {
+          _fetchListLaporan();
+        }
+      },
+    );
+  }
 
   Widget _buildEmptyState() {
     return SingleChildScrollView(
@@ -194,12 +216,21 @@ Widget _buildLaporanItem(LaporanModel item) {
         child: Column(
           children: [
             const SizedBox(height: 50),
-            Icon(Icons.assignment_turned_in_outlined, size: 80, color: const Color(0xFF1A5E35).withOpacity(0.4)),
+            Icon(
+              Icons.assignment_turned_in_outlined,
+              size: 80,
+              color: AppColors.primaryAction.withValues(alpha: 0.4),
+            ),
             const SizedBox(height: 16),
             const Text(
               'Menampilkan semua riwayat laporan Anda\ndi lingkungan Kampus UIN.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF64748B), fontSize: 13, height: 1.5, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: AppColors.slateTextSecondary,
+                fontSize: 13,
+                height: 1.5,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../models/admin_notification_model.dart';
 import 'login_screen.dart';
 import 'admin_detail_screen.dart';
 import 'admin_profile_screen.dart';
@@ -15,6 +16,7 @@ import '../widgets/admin/admin_app_bar.dart';
 import '../widgets/admin/admin_welcome_card.dart';
 import '../widgets/admin/admin_latest_laporan_section.dart';
 import '../widgets/admin/admin_dashboard_content.dart';
+import '../widgets/admin/admin_notification_tab.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -43,6 +45,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _loadSemuaLaporan();
     }
 
+    if (index == NavigationTab.notifikasi) {
+      _loadAdminNotifications();
+    }
+
     if (index == NavigationTab.dashboard) {
       _loadDashboard();
     }
@@ -51,7 +57,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // ── Navigasi tab terpusat + history stack ──
   void _changeTab(int index) {
     if (_selectedNav == index) return;
-  
+
     setState(() {
       // Kalau tab sudah pernah ada di history,
       // hapus semua history setelah tab tersebut.
@@ -68,7 +74,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   void _openLaporanWithFilter(String status) {
-    _changeTab(NavigationTab.laporan); // pindah ke tab Laporan dan masuk history
+    _changeTab(
+      NavigationTab.laporan,
+    ); // pindah ke tab Laporan dan masuk history
 
     setState(() {
       _filterStatus = status;
@@ -78,49 +86,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   // ── Konfirmasi keluar aplikasi ──
-  Future<bool> _showExitDialog() async {
-    final result = await showDialog<bool>(
+  Future<bool> _showExitDialog() {
+    return showConfirmDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text(
-            'Keluar Aplikasi',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: const Text(
-            'Apakah kamu yakin ingin keluar dari aplikasi?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFDC2626),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text('Keluar'),
-            ),
-          ],
-        );
-      },
+      title: 'Keluar Aplikasi',
+      message: 'Apakah kamu yakin ingin keluar dari aplikasi?',
+      cancelText: 'Batal',
+      confirmText: 'Keluar',
+      isDanger: true,
     );
-    return result ?? false;
   }
 
   // Laporan
   List<dynamic> _laporanList = [];
   String _filterStatus = 'semua';
   final _searchController = TextEditingController();
+
+  // Notifikasi admin
+  List<AdminNotificationModel> _notificationList = [];
+  bool _isLoadingNotifications = false;
 
   @override
   void initState() {
@@ -156,8 +140,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Gagal memuat data: $e'),
-              backgroundColor: Colors.red),
+            content: Text('Gagal memuat data: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -170,7 +155,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     setState(() => _isLoading = true);
     try {
       final result = await ApiService.getAdminLaporan(
-          status: status == 'semua' ? null : status, search: search);
+        status: status == 'semua' ? null : status,
+        search: search,
+      );
       if (result['success'] == true) {
         setState(() {
           _laporanList = result['laporan']['data'] ?? [];
@@ -182,10 +169,147 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
+  Future<void> _loadAdminNotifications() async {
+    if (!mounted) return;
+    setState(() => _isLoadingNotifications = true);
+    try {
+      final result = await ApiService.getAdminNotifikasi();
+      if (result['success'] == true) {
+        final rawList = _extractListPayload(result, 'notifikasi');
+        if (!mounted) return;
+        setState(() {
+          _notificationList = rawList
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .map(AdminNotificationModel.fromJson)
+              .toList();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memuat notifikasi: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingNotifications = false);
+    }
+  }
+
+  List<dynamic> _extractListPayload(
+    Map<String, dynamic> result,
+    String primaryKey,
+  ) {
+    final payload = result[primaryKey] ?? result['data'];
+
+    if (payload is List) return payload;
+    if (payload is Map<String, dynamic>) {
+      final data = payload['data'];
+      if (data is List) return data;
+    }
+
+    return [];
+  }
+
+  Future<Map<String, dynamic>?> _fetchReportFromNotification(
+    AdminNotificationModel notification,
+  ) async {
+    if (notification.laporan != null) return notification.laporan;
+    if (notification.laporanId == 0) return null;
+
+    final result = await ApiService.getAdminDetailLaporan(
+      notification.laporanId,
+    );
+    final payload = result['laporan'] ?? result['data'];
+    if (payload is Map<String, dynamic>) return payload;
+
+    return null;
+  }
+
+  Future<void> _openNotification(AdminNotificationModel notification) async {
+    try {
+      if (!notification.isRead) {
+        await ApiService.bacaAdminNotifikasi(notification.id);
+        if (!mounted) return;
+        _markNotificationRead(notification.id);
+      }
+
+      final laporan = await _fetchReportFromNotification(notification);
+      if (!mounted) return;
+
+      if (laporan == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Laporan terkait tidak ditemukan.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => AdminDetailScreen(laporan: laporan)),
+      );
+
+      if (mounted) {
+        _loadAdminNotifications();
+        _loadDashboard();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal membuka notifikasi: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _markNotificationRead(int id) {
+    setState(() {
+      _notificationList = _notificationList.map((notification) {
+        if (notification.id != id) return notification;
+        return notification.copyWith(isRead: true);
+      }).toList();
+    });
+  }
+
+  Future<void> _markAllNotificationsRead() async {
+    try {
+      final result = await ApiService.bacaSemuaAdminNotifikasi();
+      if (!mounted) return;
+      if (result['success'] == true) {
+        setState(() {
+          _notificationList = _notificationList
+              .map((notification) => notification.copyWith(isRead: true))
+              .toList();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menandai notifikasi: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _updateStatus(int id, String status, {String? catatan}) async {
     try {
-      final result =
-          await ApiService.updateStatusLaporan(id, status, catatan: catatan);
+      final result = await ApiService.updateStatusLaporan(
+        id,
+        status,
+        catatan: catatan,
+      );
       if (mounted) {
         if (result['success'] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -193,8 +317,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               content: const Text('Status laporan berhasil diperbarui!'),
               backgroundColor: const Color(0xFF1A5E35),
               behavior: SnackBarBehavior.floating,
-              shape:
-                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           );
           _loadDashboard();
@@ -223,8 +348,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Tandai $label',
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+        title: Text(
+          'Tandai $label',
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+        ),
         content: Text(
           'Ubah status "${item['judul'] ?? ''}" menjadi $label?',
           style: const TextStyle(fontSize: 14, color: Colors.black54),
@@ -243,8 +370,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               backgroundColor: const Color(0xFF1A5E35),
               foregroundColor: Colors.white,
               elevation: 0,
-              shape:
-                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             child: Text('Ya, $label'),
           ),
@@ -312,10 +440,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children: [
                   _buildDashboardTab(),
                   _buildLaporanTab(),
-                  _buildPlaceholderTab(
-                    Icons.notifications_outlined,
-                    'Notifikasi',
-                  ),
+                  _buildNotificationTab(),
                   const AdminProfileScreen(),
                 ],
               ),
@@ -364,6 +489,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       latestLaporanSection: _buildLaporanTerbaruSection(),
     );
   }
+
   // ── Welcome Card ─────────────────────────────────────────
   Widget _buildWelcomeCard() {
     return const AdminWelcomeCard();
@@ -412,10 +538,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         );
       },
       onSearchSubmitted: (value) {
-        _loadSemuaLaporan(
-          status: _filterStatus,
-          search: value,
-        );
+        _loadSemuaLaporan(status: _filterStatus, search: value);
       },
       onFilterChanged: (value) {
         setState(() {
@@ -439,9 +562,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       onTap: () async {
         await Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => AdminDetailScreen(laporan: item),
-          ),
+          MaterialPageRoute(builder: (_) => AdminDetailScreen(laporan: item)),
         );
 
         if (mounted) {
@@ -453,32 +574,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  // ════════════════════════════════════════════════════════
-  // TAB PLACEHOLDER (Notifikasi)
-  // ════════════════════════════════════════════════════════
-  Widget _buildPlaceholderTab(IconData icon, String label) {
-    return Column(
-      children: [
-        Expanded(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 56, color: Colors.grey.shade300),
-                const SizedBox(height: 12),
-                Text(label,
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade400)),
-                const SizedBox(height: 6),
-                Text('Segera hadir',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade400)),
-              ],
-            ),
-          ),
-        ),
-      ],
+  Widget _buildNotificationTab() {
+    return AdminNotificationTab(
+      isLoading: _isLoadingNotifications,
+      notifications: _notificationList,
+      onRefresh: _loadAdminNotifications,
+      onMarkAllRead: _markAllNotificationsRead,
+      onTapNotification: _openNotification,
     );
   }
 

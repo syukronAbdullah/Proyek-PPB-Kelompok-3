@@ -5,7 +5,6 @@ import '../config/api_config.dart';
 import 'dart:io';
 
 class ApiService {
-
   // ── Simpan token setelah login ─────────────────────────────
   static Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
@@ -38,9 +37,21 @@ class ApiService {
     return headers;
   }
 
+  static Map<String, dynamic> _decodeJsonResponse(http.Response response) {
+    if (response.body.trim().isEmpty) {
+      return {
+        'success': response.statusCode >= 200 && response.statusCode < 300,
+      };
+    }
+
+    return jsonDecode(response.body);
+  }
+
   // ── LOGIN ──────────────────────────────────────────────────
   static Future<Map<String, dynamic>> login(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     final res = await http.post(
       Uri.parse(ApiConfig.login),
       headers: await _headers(withToken: false),
@@ -57,7 +68,8 @@ class ApiService {
 
   // ── REGISTER ───────────────────────────────────────────────
   static Future<Map<String, dynamic>> register(
-      Map<String, dynamic> body) async {
+    Map<String, dynamic> body,
+  ) async {
     final res = await http.post(
       Uri.parse(ApiConfig.register),
       headers: await _headers(withToken: false),
@@ -81,10 +93,13 @@ class ApiService {
 
   // ── UBAH KATA SANDI (BARU TAMBAHAN) ────────────────────────
   static Future<Map<String, dynamic>> changePassword(
-      Map<String, dynamic> body) async {
+    Map<String, dynamic> body,
+  ) async {
     // Memanggil API ganti password dengan membawa header token keamanan login
     final res = await http.post(
-      Uri.parse(ApiConfig.gantiPassword), // Pastikan variabel ini ada di ApiConfig
+      Uri.parse(
+        ApiConfig.gantiPassword,
+      ), // Pastikan variabel ini ada di ApiConfig
       headers: await _headers(),
       body: jsonEncode(body),
     );
@@ -145,45 +160,39 @@ class ApiService {
 
   // ── POST BUAT LAPORAN BARU ─────────────────────────────────
   static Future<Map<String, dynamic>> buatLaporan(
-  Map<String, dynamic> body,
-  List<File> photos,
-) async {
-  final token = await getToken();
+    Map<String, dynamic> body,
+    List<File> photos,
+  ) async {
+    final token = await getToken();
 
-  final request = http.MultipartRequest(
-    'POST',
-    Uri.parse(ApiConfig.laporan),
-  );
+    final request = http.MultipartRequest('POST', Uri.parse(ApiConfig.laporan));
 
-  request.headers['Accept'] = 'application/json';
+    request.headers['Accept'] = 'application/json';
 
-  if (token != null) {
-    request.headers['Authorization'] = 'Bearer $token';
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    body.forEach((key, value) {
+      request.fields[key] = value.toString();
+    });
+
+    for (final photo in photos) {
+      request.files.add(
+        await http.MultipartFile.fromPath('foto[]', photo.path),
+      );
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    return jsonDecode(response.body);
   }
-
-  body.forEach((key, value) {
-    request.fields[key] = value.toString();
-  });
-
-  for (final photo in photos) {
-    request.files.add(
-      await http.MultipartFile.fromPath(
-        'foto[]',
-        photo.path,
-      ),
-    );
-  }
-
-  final streamedResponse = await request.send();
-  final response = await http.Response.fromStream(streamedResponse);
-
-  return jsonDecode(response.body);
-}
 
   // EDIT LAPORAN
   static Future<Map<String, dynamic>> updateLaporan(
-  int laporanId,
-  Map<String, dynamic> body,
+    int laporanId,
+    Map<String, dynamic> body,
   ) async {
     final token = await getToken();
 
@@ -228,10 +237,7 @@ class ApiService {
 
   // ── BACA SEMUA NOTIFIKASI ──────────────────────────────────
   static Future<void> bacaSemuaNotifikasi() async {
-    await http.post(
-      Uri.parse(ApiConfig.bacaSemua),
-      headers: await _headers(),
-    );
+    await http.post(Uri.parse(ApiConfig.bacaSemua), headers: await _headers());
   }
 
   // ── ADMIN: GET DASHBOARD ───────────────────────────────────
@@ -244,44 +250,79 @@ class ApiService {
   }
 
   // ── ADMIN: GET SEMUA LAPORAN ───────────────────────────────
-  static Future<Map<String, dynamic>> getAdminLaporan(
-      {String? status, String? search}) async {
+  static Future<Map<String, dynamic>> getAdminLaporan({
+    String? status,
+    String? search,
+  }) async {
     var url = ApiConfig.adminLaporan;
     final params = <String>[];
     if (status != null) params.add('status=$status');
     if (search != null) params.add('search=$search');
     if (params.isNotEmpty) url += '?${params.join('&')}';
 
+    final res = await http.get(Uri.parse(url), headers: await _headers());
+    return jsonDecode(res.body);
+  }
+
+  // ADMIN: GET DETAIL LAPORAN
+  static Future<Map<String, dynamic>> getAdminDetailLaporan(int id) async {
     final res = await http.get(
-      Uri.parse(url),
+      Uri.parse('${ApiConfig.adminLaporan}/$id'),
       headers: await _headers(),
     );
     return jsonDecode(res.body);
   }
 
+  // ADMIN: GET NOTIFIKASI LAPORAN BARU
+  static Future<Map<String, dynamic>> getAdminNotifikasi() async {
+    final res = await http.get(
+      Uri.parse(ApiConfig.adminNotifikasi),
+      headers: await _headers(),
+    );
+    return jsonDecode(res.body);
+  }
+
+  // ADMIN: TANDAI NOTIFIKASI SUDAH DIBACA
+  static Future<Map<String, dynamic>> bacaAdminNotifikasi(int id) async {
+    final res = await http.post(
+      Uri.parse('${ApiConfig.adminNotifikasi}/$id/baca'),
+      headers: await _headers(),
+    );
+    return _decodeJsonResponse(res);
+  }
+
+  // ADMIN: TANDAI SEMUA NOTIFIKASI SUDAH DIBACA
+  static Future<Map<String, dynamic>> bacaSemuaAdminNotifikasi() async {
+    final res = await http.post(
+      Uri.parse(ApiConfig.adminBacaSemuaNotifikasi),
+      headers: await _headers(),
+    );
+    return _decodeJsonResponse(res);
+  }
+
   // ── ADMIN: UPDATE STATUS LAPORAN ───────────────────────────
   static Future<Map<String, dynamic>> updateStatusLaporan(
-      int id, String status, {String? catatan}) async {
+    int id,
+    String status, {
+    String? catatan,
+  }) async {
     final res = await http.post(
       Uri.parse('${ApiConfig.adminLaporan}/$id/status'),
       headers: await _headers(),
-      body: jsonEncode({
-        'status': status,
-        'catatan_admin': catatan,
-      }),
+      body: jsonEncode({'status': status, 'catatan_admin': catatan}),
     );
     return jsonDecode(res.body);
   }
 
   // ── GET PRODI BERDASARKAN FAKULTAS ─────────────────────────
   static Future<List<dynamic>> getProdi(int? fakultasId) async {
-  // Jika fakultasId diisi, tembak ke URL: /api/prodi?fakultas_id=1
-  final url = fakultasId != null 
-      ? '${ApiConfig.prodi}?fakultas_id=$fakultasId' 
-      : ApiConfig.prodi;
-      
-  final res = await http.get(Uri.parse(url));
-  final data = jsonDecode(res.body);
-  return data['prodi'] ?? [];
- }
+    // Jika fakultasId diisi, tembak ke URL: /api/prodi?fakultas_id=1
+    final url = fakultasId != null
+        ? '${ApiConfig.prodi}?fakultas_id=$fakultasId'
+        : ApiConfig.prodi;
+
+    final res = await http.get(Uri.parse(url));
+    final data = jsonDecode(res.body);
+    return data['prodi'] ?? [];
+  }
 }
